@@ -1,0 +1,9 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Avito Internship Service: User Segments",
+        "contact": {},
+        "version": "1.0"
+    },
+    "paths": {}
+}
