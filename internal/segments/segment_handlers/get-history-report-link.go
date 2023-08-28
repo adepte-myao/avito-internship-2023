@@ -1,7 +1,6 @@
 package segment_handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -30,8 +29,8 @@ func NewGetHistoryReportLinkHandler(reportLinkGetter reportLinkGetter, validate 
 
 func (handler *GetHistoryReportLinkHandler) Handle(c *gin.Context) {
 	var dto segments.GetSegmentsHistoryReportLinkDTO
-	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {
-		err = fmt.Errorf("%w: %w", common.ErrJSONUnmarshalling, err)
+	if err := c.ShouldBindQuery(&dto); err != nil {
+		err = fmt.Errorf("%w: %w", common.ErrBindFailed, err)
 		_ = c.Error(err)
 		return
 	}

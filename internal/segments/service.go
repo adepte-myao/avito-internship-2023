@@ -12,6 +12,7 @@ import (
 )
 
 var (
+	ErrSegmentNotExist   = errors.New("segment does not exist")
 	ErrSlugAlreadyInUse  = errors.New("the slug is already in use")
 	ErrUserDoesNotExist  = errors.New("user does not exist")
 	ErrTooMuchParameters = errors.New("too much parameters")
@@ -30,7 +31,6 @@ type transactionHelper interface {
 type userLocalProvider interface {
 	transactionHelper
 	Create(ctx context.Context, user User) error
-	GetRandom(ctx context.Context) (User, error)
 	GetAll(ctx context.Context) ([]User, error)
 	Exists(ctx context.Context, userID string) (bool, error)
 	Remove(ctx context.Context, userID string) error
@@ -47,8 +47,12 @@ type segmentsProvider interface {
 	RemoveSegmentsForUser(ctx context.Context, userID string, slugsToRemove []string) error
 }
 
+type userSegmentHistoryProvider interface {
+	GetAllForUser(ctx context.Context, userID string, month, year int) ([]UserSegmentHistoryEntry, error)
+}
+
 type deadlineAdder interface {
-	AddDeadlines(deadlines []DeadlineEntry) error
+	AddDeadlines(ctx context.Context, deadlines []DeadlineEntry) error
 }
 
 type Service struct {
@@ -57,7 +61,22 @@ type Service struct {
 	userServiceProvider userServiceProvider
 	userLocalProvider   userLocalProvider
 	segmentsProvider    segmentsProvider
+	historyProvider     userSegmentHistoryProvider
 	deadlineAdder       deadlineAdder
+}
+
+func NewService(logger common.Logger, providerContext context.Context, userServiceProvider userServiceProvider,
+	userLocalProvider userLocalProvider, segmentsProvider segmentsProvider, historyProvider userSegmentHistoryProvider,
+	deadlineAdder deadlineAdder) *Service {
+	return &Service{
+		logger:              logger,
+		providerContext:     providerContext,
+		userServiceProvider: userServiceProvider,
+		userLocalProvider:   userLocalProvider,
+		segmentsProvider:    segmentsProvider,
+		historyProvider:     historyProvider,
+		deadlineAdder:       deadlineAdder,
+	}
 }
 
 func (service *Service) ChangeSegmentsForUser(dto ChangeSegmentsForUserDTO) error {
@@ -130,7 +149,7 @@ func (service *Service) validateSegmentEntries(ctx context.Context, toAdd []AddS
 		allSlugs = append(allSlugs, segmentInfo.SegmentSlug)
 	}
 
-	err := service.validateSegments(ctx, allSlugs)
+	err := service.validateSegmentsExist(ctx, allSlugs)
 	if err != nil {
 		return err
 	}
@@ -140,6 +159,27 @@ func (service *Service) validateSegmentEntries(ctx context.Context, toAdd []AddS
 			return fmt.Errorf("%w: %s", ErrTooMuchParameters,
 				"deadline must not be specified using both secondsToBeInSegment and deadlineForStayingInSegment")
 		}
+	}
+
+	return nil
+}
+
+func (service *Service) validateSegmentsExist(ctx context.Context, slugs []string) error {
+	segments, err := service.segmentsProvider.GetAllAsMap(ctx)
+	if err != nil {
+		service.logger.Error(err)
+		return err
+	}
+
+	missedSlugs := make([]string, 0)
+	for _, slug := range slugs {
+		if _, ok := segments[slug]; !ok {
+			missedSlugs = append(missedSlugs, slug)
+		}
+	}
+	if len(missedSlugs) > 0 {
+		err = fmt.Errorf("%w; missed segments: %s", ErrSegmentNotExist, strings.Join(missedSlugs, ", "))
+		return err
 	}
 
 	return nil
@@ -166,7 +206,7 @@ func (service *Service) addDeadlines(userID string, segmentsToAdd []AddSegmentEn
 		})
 	}
 
-	err := service.deadlineAdder.AddDeadlines(deadlines)
+	err := service.deadlineAdder.AddDeadlines(service.providerContext, deadlines)
 	if err != nil {
 		return err
 	}
@@ -184,8 +224,13 @@ func (service *Service) GetSegmentsForUser(dto GetSegmentsForUserDTO) (GetSegmen
 }
 
 func (service *Service) GetHistoryReportLink(dto GetSegmentsHistoryReportLinkDTO) (string, error) {
+	entries, err := service.historyProvider.GetAllForUser(service.providerContext, dto.UserID, dto.Month, dto.Year)
+	if err != nil {
+		return "", err
+	}
+
 	// TODO: dropbox integration?
-	return "", nil
+	return fmt.Sprint(entries), nil
 }
 
 func (service *Service) CreateSegment(dto CreateSegmentDTO) error {
@@ -221,7 +266,7 @@ func (service *Service) CreateSegment(dto CreateSegmentDTO) error {
 }
 
 func (service *Service) createSegment(ctx context.Context, dto CreateSegmentDTO) error {
-	err := service.validateSegments(ctx, []string{dto.Slug})
+	err := service.validateSegmentsNotExist(ctx, []string{dto.Slug})
 	if err != nil {
 		return err
 	}
@@ -235,7 +280,7 @@ func (service *Service) createSegment(ctx context.Context, dto CreateSegmentDTO)
 	return nil
 }
 
-func (service *Service) validateSegments(ctx context.Context, slugs []string) error {
+func (service *Service) validateSegmentsNotExist(ctx context.Context, slugs []string) error {
 	segments, err := service.segmentsProvider.GetAllAsMap(ctx)
 	if err != nil {
 		service.logger.Error(err)
@@ -278,6 +323,10 @@ func (service *Service) getPercentOfUsers(ctx context.Context, percent float64) 
 	userIDs := make([]string, 0)
 	partition := percent / 100
 	for _, user := range users {
+		if user.Status != Active {
+			continue
+		}
+
 		if rand.Float64() < partition {
 			userIDs = append(userIDs, user.Id)
 		}

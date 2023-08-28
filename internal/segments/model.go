@@ -36,7 +36,21 @@ type ChangeSegmentsForUserDTO struct {
 }
 
 type GetSegmentsForUserDTO struct {
-	UserID string `json:"userID" validate:"required"`
+	UserID string `form:"userID" validate:"required"`
+}
+
+type HistoryActionType string
+
+var (
+	Added   HistoryActionType = "added"
+	Removed HistoryActionType = "removed"
+)
+
+type UserSegmentHistoryEntry struct {
+	UserID     string
+	Slug       string
+	ActionType HistoryActionType
+	LogTime    time.Time
 }
 
 type GetSegmentsForUserOutDTO struct {
@@ -44,9 +58,9 @@ type GetSegmentsForUserOutDTO struct {
 }
 
 type GetSegmentsHistoryReportLinkDTO struct {
-	UserID string `json:"userID" validate:"required"`
-	Month  int    `json:"month" validate:"required,gte=1,lte=12"`
-	Year   int    `json:"year" validate:"required"`
+	UserID string `form:"userID" validate:"required"`
+	Month  int    `form:"month" validate:"required,gte=1,lte=12"`
+	Year   int    `form:"year" validate:"required"`
 }
 
 type CreateUserDTO struct {

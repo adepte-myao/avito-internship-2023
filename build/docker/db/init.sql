@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS segments (
 );
 
 CREATE TABLE IF NOT EXISTS users_segments (
-    user_id TEXT REFERENCES users (id) NOT NULL,
-    segment_slug TEXT REFERENCES segments (slug) NOT NULL,
+    user_id TEXT REFERENCES users (id) ON DELETE CASCADE NOT NULL,
+    segment_slug TEXT REFERENCES segments (slug) ON DELETE CASCADE NOT NULL,
 
     CONSTRAINT users_segments_pk PRIMARY KEY(user_id, segment_slug)
 );

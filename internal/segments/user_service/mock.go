@@ -3,10 +3,12 @@ package user_service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"math/rand"
 	"time"
 
 	"avito-internship-2023/internal/segments"
+	"avito-internship-2023/internal/segments/segment_postgres"
 
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
@@ -36,7 +38,7 @@ func (service *Mock) GetStatus(userID string) (segments.UserStatus, error) {
 		// User tries to remove his account or is banned or there is a reason we shouldn't treat him as usual
 		return segments.Excluded, nil
 	}
-	if usActionProb < 0.4 {
+	if usActionProb < 0.3 {
 		// User was removed from user service
 		return "", segments.ErrUserNotFound
 	}
@@ -58,7 +60,9 @@ func (service *Mock) ProduceEvent() error {
 		// For operations with non-existing user
 		user = segments.User{Id: uuid.New().String()}
 	}
-	if err != nil {
+	if errors.Is(err, segment_postgres.ErrNoUsersToPick) {
+		user = segments.User{Id: uuid.New().String()}
+	} else if err != nil {
 		return err
 	}
 
@@ -68,7 +72,7 @@ func (service *Mock) ProduceEvent() error {
 		return err
 	}
 
-	writeCtx, cancel := context.WithTimeout(service.ctx, time.Second)
+	writeCtx, cancel := context.WithTimeout(service.ctx, 5*time.Second)
 	defer cancel()
 
 	err = service.writer.WriteMessages(writeCtx, kafka.Message{Value: message})

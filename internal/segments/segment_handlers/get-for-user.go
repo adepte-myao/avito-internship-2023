@@ -1,7 +1,6 @@
 package segment_handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -30,8 +29,8 @@ func NewGetForUserHandler(segmentsGetter segmentsGetter, validate *validator.Val
 
 func (handler *GetForUserHandler) Handle(c *gin.Context) {
 	var dto segments.GetSegmentsForUserDTO
-	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {
-		err = fmt.Errorf("%w: %w", common.ErrJSONUnmarshalling, err)
+	if err := c.BindQuery(&dto); err != nil {
+		err = fmt.Errorf("%w: %w", common.ErrBindFailed, err)
 		_ = c.Error(err)
 		return
 	}
