@@ -27,6 +27,13 @@ func NewGetForUserHandler(segmentsGetter segmentsGetter, validate *validator.Val
 	}
 }
 
+// Handle of segment_handlers/GetForUserHandler
+// @Tags segment
+// @Description Returns the list of segments for given user
+// @Produce json
+// @Param userID query string true "identifier of user which segments to provide"
+// @Success 200 {object} segments.GetSegmentsForUserOutDTO
+// @Router /segments/get-for-user [get]
 func (handler *GetForUserHandler) Handle(c *gin.Context) {
 	var dto segments.GetSegmentsForUserDTO
 	if err := c.BindQuery(&dto); err != nil {

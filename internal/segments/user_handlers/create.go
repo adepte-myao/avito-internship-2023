@@ -28,6 +28,13 @@ func NewCreateHandler(creator creator, validate *validator.Validate) *CreateHand
 	}
 }
 
+// Handle of user_handlers/CreateHandler
+// @Tags user
+// @Description Saves information about user in local storage
+// @Accept json
+// @Param input body segments.CreateUserDTO true "userID to save"
+// @Success 204
+// @Router /segments/create-user [post]
 func (handler *CreateHandler) Handle(c *gin.Context) {
 	var dto segments.CreateUserDTO
 	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {

@@ -1,6 +1,247 @@
+definitions:
+  segments.AddSegmentEntry:
+    properties:
+      deadlineForStayingInSegment:
+        type: string
+      secondsToBeInSegment:
+        minimum: 1
+        type: integer
+      segmentSlug:
+        type: string
+    required:
+    - segmentSlug
+    type: object
+  segments.ChangeSegmentsForUserDTO:
+    properties:
+      segmentsToAdd:
+        items:
+          $ref: '#/definitions/segments.AddSegmentEntry'
+        type: array
+      segmentsToRemove:
+        items:
+          $ref: '#/definitions/segments.RemoveSegmentEntry'
+        type: array
+      userID:
+        type: string
+    required:
+    - userID
+    type: object
+  segments.CreateSegmentDTO:
+    properties:
+      percentToFill:
+        maximum: 100
+        minimum: 0
+        type: number
+      slug:
+        type: string
+    required:
+    - slug
+    type: object
+  segments.CreateUserDTO:
+    properties:
+      userID:
+        type: string
+    required:
+    - userID
+    type: object
+  segments.GetSegmentsForUserOutDTO:
+    properties:
+      segments:
+        items:
+          type: string
+        type: array
+    type: object
+  segments.RemoveSegmentDTO:
+    properties:
+      slug:
+        type: string
+    required:
+    - slug
+    type: object
+  segments.RemoveSegmentEntry:
+    properties:
+      segmentSlug:
+        type: string
+    required:
+    - segmentSlug
+    type: object
+  segments.RemoveUserDTO:
+    properties:
+      userID:
+        type: string
+    required:
+    - userID
+    type: object
+  segments.UpdateUserDTO:
+    properties:
+      status:
+        $ref: '#/definitions/segments.UserStatus'
+      userID:
+        type: string
+    required:
+    - userID
+    type: object
+  segments.UserStatus:
+    enum:
+    - active
+    - excluded
+    type: string
+    x-enum-varnames:
+    - Active
+    - Excluded
 info:
   contact: {}
   title: 'Avito Internship Service: User Segments'
   version: "1.0"
-paths: {}
+paths:
+  /segments/change-for-user:
+    post:
+      consumes:
+      - application/json
+      description: Validates given segment changes and applies them
+      parameters:
+      - description: userID, which segments to change, and segments lists to add/remove
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/segments.ChangeSegmentsForUserDTO'
+      responses:
+        "204":
+          description: No Content
+      tags:
+      - segment
+  /segments/create:
+    post:
+      consumes:
+      - application/json
+      description: Validates given segment creates it
+      parameters:
+      - description: slug and probability for each user to be added to segment
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/segments.CreateSegmentDTO'
+      responses:
+        "204":
+          description: No Content
+      tags:
+      - segment
+  /segments/create-user:
+    post:
+      consumes:
+      - application/json
+      description: Saves information about user in local storage
+      parameters:
+      - description: userID to save
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/segments.CreateUserDTO'
+      responses:
+        "204":
+          description: No Content
+      tags:
+      - user
+  /segments/get-for-user:
+    get:
+      description: Returns the list of segments for given user
+      parameters:
+      - description: identifier of user which segments to provide
+        in: query
+        name: userID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/segments.GetSegmentsForUserOutDTO'
+      tags:
+      - segment
+  /segments/get-history-report-link:
+    get:
+      description: Returns the link to the report that contains history of segment
+        assignments for given user in given month, year
+      parameters:
+      - description: identifier of user which history to provide
+        in: query
+        name: userID
+        required: true
+        type: string
+      - description: number of month (1-12) for which history will be provided
+        in: query
+        name: month
+        required: true
+        type: integer
+      - description: year
+        in: query
+        name: year
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/segments.GetSegmentsForUserOutDTO'
+      tags:
+      - segment
+  /segments/remove:
+    delete:
+      consumes:
+      - application/json
+      description: Removes given segment and excludes all users from it
+      parameters:
+      - description: slug of segment to remove
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/segments.RemoveSegmentDTO'
+      responses:
+        "204":
+          description: No Content
+      tags:
+      - segment
+  /segments/remove-user:
+    delete:
+      consumes:
+      - application/json
+      description: Removes user from local storage and excludes him from all segments
+        he has
+      parameters:
+      - description: userID to remove
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/segments.RemoveUserDTO'
+      responses:
+        "204":
+          description: No Content
+      tags:
+      - user
+  /segments/update-user:
+    put:
+      consumes:
+      - application/json
+      description: Updates user info
+      parameters:
+      - description: 'userID and his status to update '
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/segments.UpdateUserDTO'
+      responses:
+        "204":
+          description: No Content
+      tags:
+      - user
 swagger: "2.0"

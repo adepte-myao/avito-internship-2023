@@ -28,6 +28,13 @@ func NewChangeForUserHandler(segmentsChanger segmentsChanger, validate *validato
 	}
 }
 
+// Handle of segment_handlers/ChangeForUserHandler
+// @Tags segment
+// @Description Validates given segment changes and applies them
+// @Accept json
+// @Param input body segments.ChangeSegmentsForUserDTO true "userID, which segments to change, and segments lists to add/remove"
+// @Success 204
+// @Router /segments/change-for-user [post]
 func (handler *ChangeForUserHandler) Handle(c *gin.Context) {
 	var dto segments.ChangeSegmentsForUserDTO
 	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {

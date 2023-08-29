@@ -5,5 +5,377 @@
         "contact": {},
         "version": "1.0"
     },
-    "paths": {}
+    "paths": {
+        "/segments/change-for-user": {
+            "post": {
+                "description": "Validates given segment changes and applies them",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "segment"
+                ],
+                "parameters": [
+                    {
+                        "description": "userID, which segments to change, and segments lists to add/remove",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/segments.ChangeSegmentsForUserDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/segments/create": {
+            "post": {
+                "description": "Validates given segment creates it",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "segment"
+                ],
+                "parameters": [
+                    {
+                        "description": "slug and probability for each user to be added to segment",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/segments.CreateSegmentDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/segments/create-user": {
+            "post": {
+                "description": "Saves information about user in local storage",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "parameters": [
+                    {
+                        "description": "userID to save",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/segments.CreateUserDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/segments/get-for-user": {
+            "get": {
+                "description": "Returns the list of segments for given user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "segment"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "identifier of user which segments to provide",
+                        "name": "userID",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/segments.GetSegmentsForUserOutDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/segments/get-history-report-link": {
+            "get": {
+                "description": "Returns the link to the report that contains history of segment assignments for given user in given month, year",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "segment"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "identifier of user which history to provide",
+                        "name": "userID",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "number of month (1-12) for which history will be provided",
+                        "name": "month",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "year",
+                        "name": "year",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/segments.GetSegmentsForUserOutDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/segments/remove": {
+            "delete": {
+                "description": "Removes given segment and excludes all users from it",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "segment"
+                ],
+                "parameters": [
+                    {
+                        "description": "slug of segment to remove",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/segments.RemoveSegmentDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/segments/remove-user": {
+            "delete": {
+                "description": "Removes user from local storage and excludes him from all segments he has",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "parameters": [
+                    {
+                        "description": "userID to remove",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/segments.RemoveUserDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/segments/update-user": {
+            "put": {
+                "description": "Updates user info",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "parameters": [
+                    {
+                        "description": "userID and his status to update ",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/segments.UpdateUserDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "segments.AddSegmentEntry": {
+            "type": "object",
+            "required": [
+                "segmentSlug"
+            ],
+            "properties": {
+                "deadlineForStayingInSegment": {
+                    "type": "string"
+                },
+                "secondsToBeInSegment": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "segmentSlug": {
+                    "type": "string"
+                }
+            }
+        },
+        "segments.ChangeSegmentsForUserDTO": {
+            "type": "object",
+            "required": [
+                "userID"
+            ],
+            "properties": {
+                "segmentsToAdd": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/segments.AddSegmentEntry"
+                    }
+                },
+                "segmentsToRemove": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/segments.RemoveSegmentEntry"
+                    }
+                },
+                "userID": {
+                    "type": "string"
+                }
+            }
+        },
+        "segments.CreateSegmentDTO": {
+            "type": "object",
+            "required": [
+                "slug"
+            ],
+            "properties": {
+                "percentToFill": {
+                    "type": "number",
+                    "maximum": 100,
+                    "minimum": 0
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "segments.CreateUserDTO": {
+            "type": "object",
+            "required": [
+                "userID"
+            ],
+            "properties": {
+                "userID": {
+                    "type": "string"
+                }
+            }
+        },
+        "segments.GetSegmentsForUserOutDTO": {
+            "type": "object",
+            "properties": {
+                "segments": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "segments.RemoveSegmentDTO": {
+            "type": "object",
+            "required": [
+                "slug"
+            ],
+            "properties": {
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "segments.RemoveSegmentEntry": {
+            "type": "object",
+            "required": [
+                "segmentSlug"
+            ],
+            "properties": {
+                "segmentSlug": {
+                    "type": "string"
+                }
+            }
+        },
+        "segments.RemoveUserDTO": {
+            "type": "object",
+            "required": [
+                "userID"
+            ],
+            "properties": {
+                "userID": {
+                    "type": "string"
+                }
+            }
+        },
+        "segments.UpdateUserDTO": {
+            "type": "object",
+            "required": [
+                "userID"
+            ],
+            "properties": {
+                "status": {
+                    "$ref": "#/definitions/segments.UserStatus"
+                },
+                "userID": {
+                    "type": "string"
+                }
+            }
+        },
+        "segments.UserStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "excluded"
+            ],
+            "x-enum-varnames": [
+                "Active",
+                "Excluded"
+            ]
+        }
+    }
 }

@@ -27,9 +27,18 @@ func NewGetHistoryReportLinkHandler(reportLinkGetter reportLinkGetter, validate 
 	}
 }
 
+// Handle of segment_handlers/GetHistoryReportLinkHandler
+// @Tags segment
+// @Description Returns the link to the report that contains history of segment assignments for given user in given month, year
+// @Produce json
+// @Param userID query string true "identifier of user which history to provide"
+// @Param month query int true "number of month (1-12) for which history will be provided"
+// @Param year query int true "year"
+// @Success 200 {object} segments.GetSegmentsForUserOutDTO
+// @Router /segments/get-history-report-link [get]
 func (handler *GetHistoryReportLinkHandler) Handle(c *gin.Context) {
 	var dto segments.GetSegmentsHistoryReportLinkDTO
-	if err := c.ShouldBindQuery(&dto); err != nil {
+	if err := c.BindQuery(&dto); err != nil {
 		err = fmt.Errorf("%w: %w", common.ErrBindFailed, err)
 		_ = c.Error(err)
 		return

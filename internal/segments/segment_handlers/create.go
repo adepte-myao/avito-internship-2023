@@ -28,6 +28,13 @@ func NewCreateHandler(creator creator, validate *validator.Validate) *CreateHand
 	}
 }
 
+// Handle of segment_handlers/CreateHandler
+// @Tags segment
+// @Description Validates given segment creates it
+// @Accept json
+// @Param input body segments.CreateSegmentDTO true "slug and probability for each user to be added to segment"
+// @Success 204
+// @Router /segments/create [post]
 func (handler *CreateHandler) Handle(c *gin.Context) {
 	var dto segments.CreateSegmentDTO
 	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {

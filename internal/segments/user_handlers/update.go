@@ -28,6 +28,13 @@ func NewUpdateHandler(updater updater, validate *validator.Validate) *UpdateHand
 	}
 }
 
+// Handle of user_handlers/UpdateHandler
+// @Tags user
+// @Description Updates user info
+// @Accept json
+// @Param input body segments.UpdateUserDTO true "userID and his status to update "
+// @Success 204
+// @Router /segments/update-user [put]
 func (handler *UpdateHandler) Handle(c *gin.Context) {
 	var dto segments.UpdateUserDTO
 	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {

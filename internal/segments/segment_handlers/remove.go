@@ -28,6 +28,13 @@ func NewRemoveHandler(remover remover, validate *validator.Validate) *RemoveHand
 	}
 }
 
+// Handle of segment_handlers/RemoveHandler
+// @Tags segment
+// @Description Removes given segment and excludes all users from it
+// @Accept json
+// @Param input body segments.RemoveSegmentDTO true "slug of segment to remove"
+// @Success 204
+// @Router /segments/remove [delete]
 func (handler *RemoveHandler) Handle(c *gin.Context) {
 	var dto segments.RemoveSegmentDTO
 	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {

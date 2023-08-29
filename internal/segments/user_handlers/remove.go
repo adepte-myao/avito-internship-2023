@@ -28,6 +28,13 @@ func NewRemoveHandler(remover remover, validate *validator.Validate) *RemoveHand
 	}
 }
 
+// Handle of user_handlers/RemoveHandler
+// @Tags user
+// @Description Removes user from local storage and excludes him from all segments he has
+// @Accept json
+// @Param input body segments.RemoveUserDTO true "userID to remove"
+// @Success 204
+// @Router /segments/remove-user [delete]
 func (handler *RemoveHandler) Handle(c *gin.Context) {
 	var dto segments.RemoveUserDTO
 	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {
