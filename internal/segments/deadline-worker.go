@@ -2,7 +2,6 @@ package segments
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"avito-internship-2023/internal/pkg/common"
@@ -33,11 +32,19 @@ func (worker *DeadlineWorker) RemoveExceededUserSegments() error {
 
 	deadlinesMap := deadlinesToUserIDMap(deadlines)
 	for userID, slugsToRemove := range deadlinesMap {
-		err = errors.Join(err, worker.segmentsProvider.RemoveSegmentsForUser(worker.providerCtx, userID, slugsToRemove))
-	}
-	if err != nil {
-		worker.logger.Error(err)
-		return err
+		currentUserSegments, err := worker.segmentsProvider.GetForUser(worker.providerCtx, userID)
+		if err != nil {
+			worker.logger.Error(err)
+			return err
+		}
+
+		slugsToRemove = excludeDeletedSegments(slugsToRemove, currentUserSegments)
+
+		err = worker.segmentsProvider.RemoveSegmentsForUser(worker.providerCtx, userID, slugsToRemove)
+		if err != nil {
+			worker.logger.Error(err)
+			return err
+		}
 	}
 
 	err = worker.deadlineProvider.Remove(worker.providerCtx, deadlines)
@@ -64,4 +71,27 @@ func deadlinesToUserIDMap(deadlines []DeadlineEntry) map[string][]string {
 	}
 
 	return outMap
+}
+
+func excludeDeletedSegments(initialSlice, existingSegments []string) []string {
+	existingSegmentsMap := sliceToMap(existingSegments)
+
+	filteredSlice := make([]string, 0)
+	for _, slug := range initialSlice {
+		if _, ok := existingSegmentsMap[slug]; ok {
+			filteredSlice = append(filteredSlice, slug)
+		}
+	}
+
+	return filteredSlice
+}
+
+func sliceToMap(slice []string) map[string]bool {
+	out := make(map[string]bool, len(slice))
+
+	for _, val := range slice {
+		out[val] = true
+	}
+
+	return out
 }
