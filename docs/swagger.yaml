@@ -1,4 +1,11 @@
 definitions:
+  segment_handlers.getSegmentsHistoryReportLinkOutDTO:
+    properties:
+      expirationTime:
+        type: string
+      reportLink:
+        type: string
+    type: object
   segments.AddSegmentEntry:
     properties:
       deadlineForStayingInSegment:
@@ -166,7 +173,8 @@ paths:
   /segments/get-history-report-link:
     get:
       description: Returns the link to the report that contains history of segment
-        assignments for given user in given month, year
+        assignments for given user in given month, year. Link to the report expires
+        in four hours.
       parameters:
       - description: identifier of user which history to provide
         in: query
@@ -189,7 +197,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/segments.GetSegmentsForUserOutDTO'
+            $ref: '#/definitions/segment_handlers.getSegmentsHistoryReportLinkOutDTO'
       tags:
       - segment
   /segments/remove:

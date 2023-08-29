@@ -16,6 +16,7 @@ import (
 	"avito-internship-2023/internal/pkg/postgres"
 	"avito-internship-2023/internal/pkg/server"
 	"avito-internship-2023/internal/segments"
+	"avito-internship-2023/internal/segments/segment_dropbox"
 	"avito-internship-2023/internal/segments/segment_handlers"
 	"avito-internship-2023/internal/segments/segment_postgres"
 	"avito-internship-2023/internal/segments/user_handlers"
@@ -136,8 +137,12 @@ func main() {
 			}
 		}()
 
+		dropboxService := segment_dropbox.NewService(
+			context.Background(), segmentsLogger.With("caller_type", "DropboxService"), os.Getenv("DROPBOX_TOKEN"))
+
 		service := segments.NewService(
-			segmentsLogger.With("caller_type", "Service"), dbContext, userService, userRepo, segmentRepo, historyRepo, deadlineRepo)
+			segmentsLogger.With("caller_type", "Service"), dbContext, userService, userRepo,
+			segmentRepo, historyRepo, deadlineRepo, dropboxService)
 
 		changeForUserHandler := segment_handlers.NewChangeForUserHandler(service, validate)
 		segmentsRouter.POST("/change-for-user", changeForUserHandler.Handle)
@@ -149,7 +154,7 @@ func main() {
 		segmentsRouter.GET("/get-for-user", getForUserHandler.Handle)
 
 		getHistoryLinkHandler := segment_handlers.NewGetHistoryReportLinkHandler(service, validate)
-		segmentsRouter.GET("/get-history-link", getHistoryLinkHandler.Handle)
+		segmentsRouter.GET("/get-history-report-link", getHistoryLinkHandler.Handle)
 
 		removeHandler := segment_handlers.NewRemoveHandler(service, validate)
 		segmentsRouter.DELETE("/remove", removeHandler.Handle)

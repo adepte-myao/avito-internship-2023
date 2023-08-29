@@ -3,6 +3,7 @@ package segment_handlers
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"avito-internship-2023/internal/pkg/common"
 	"avito-internship-2023/internal/segments"
@@ -10,6 +11,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
+
+type getSegmentsHistoryReportLinkOutDTO struct {
+	Link           string `json:"reportLink"`
+	ExpirationTime string `json:"expirationTime"`
+}
 
 type reportLinkGetter interface {
 	GetHistoryReportLink(dto segments.GetSegmentsHistoryReportLinkDTO) (string, error)
@@ -29,12 +35,12 @@ func NewGetHistoryReportLinkHandler(reportLinkGetter reportLinkGetter, validate 
 
 // Handle of segment_handlers/GetHistoryReportLinkHandler
 // @Tags segment
-// @Description Returns the link to the report that contains history of segment assignments for given user in given month, year
+// @Description Returns the link to the report that contains history of segment assignments for given user in given month, year. Link to the report expires in four hours.
 // @Produce json
 // @Param userID query string true "identifier of user which history to provide"
 // @Param month query int true "number of month (1-12) for which history will be provided"
 // @Param year query int true "year"
-// @Success 200 {object} segments.GetSegmentsForUserOutDTO
+// @Success 200 {object} getSegmentsHistoryReportLinkOutDTO
 // @Router /segments/get-history-report-link [get]
 func (handler *GetHistoryReportLinkHandler) Handle(c *gin.Context) {
 	var dto segments.GetSegmentsHistoryReportLinkDTO
@@ -55,6 +61,10 @@ func (handler *GetHistoryReportLinkHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	outDto := map[string]string{"reportLink": link}
+	outDto := getSegmentsHistoryReportLinkOutDTO{
+		Link:           link,
+		ExpirationTime: time.Now().Add(4 * time.Hour).String(),
+	}
+
 	c.JSON(http.StatusOK, outDto)
 }

@@ -1,9 +1,12 @@
 package segments
 
 import (
+	"bytes"
 	"context"
+	"encoding/csv"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"strings"
 	"time"
@@ -55,6 +58,10 @@ type deadlineAdder interface {
 	AddDeadlines(ctx context.Context, deadlines []DeadlineEntry) error
 }
 
+type fileStorage interface {
+	SaveFileWithURLAccess(context io.Reader) (string, error)
+}
+
 type Service struct {
 	logger              common.Logger
 	providerContext     context.Context
@@ -63,11 +70,12 @@ type Service struct {
 	segmentsProvider    segmentsProvider
 	historyProvider     userSegmentHistoryProvider
 	deadlineAdder       deadlineAdder
+	fileStorage         fileStorage
 }
 
 func NewService(logger common.Logger, providerContext context.Context, userServiceProvider userServiceProvider,
 	userLocalProvider userLocalProvider, segmentsProvider segmentsProvider, historyProvider userSegmentHistoryProvider,
-	deadlineAdder deadlineAdder) *Service {
+	deadlineAdder deadlineAdder, fileStorage fileStorage) *Service {
 	return &Service{
 		logger:              logger,
 		providerContext:     providerContext,
@@ -76,6 +84,7 @@ func NewService(logger common.Logger, providerContext context.Context, userServi
 		segmentsProvider:    segmentsProvider,
 		historyProvider:     historyProvider,
 		deadlineAdder:       deadlineAdder,
+		fileStorage:         fileStorage,
 	}
 }
 
@@ -229,8 +238,24 @@ func (service *Service) GetHistoryReportLink(dto GetSegmentsHistoryReportLinkDTO
 		return "", err
 	}
 
-	// TODO: dropbox integration?
-	return fmt.Sprint(entries), nil
+	toWrite := make([][]string, len(entries))
+	for i, entry := range entries {
+		toWrite[i] = []string{entry.Slug, entry.UserID, string(entry.ActionType), entry.LogTime.String()}
+	}
+
+	reportContent := &bytes.Buffer{}
+	csvWriter := csv.NewWriter(reportContent)
+	err = csvWriter.WriteAll(toWrite)
+	if err != nil {
+		return "", err
+	}
+
+	url, err := service.fileStorage.SaveFileWithURLAccess(reportContent)
+	if err != nil {
+		return "", err
+	}
+
+	return url, nil
 }
 
 func (service *Service) CreateSegment(dto CreateSegmentDTO) error {

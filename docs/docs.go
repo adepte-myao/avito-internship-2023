@@ -126,7 +126,7 @@ const docTemplate = `{
         },
         "/segments/get-history-report-link": {
             "get": {
-                "description": "Returns the link to the report that contains history of segment assignments for given user in given month, year",
+                "description": "Returns the link to the report that contains history of segment assignments for given user in given month, year. Link to the report expires in four hours.",
                 "produces": [
                     "application/json"
                 ],
@@ -160,7 +160,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/segments.GetSegmentsForUserOutDTO"
+                            "$ref": "#/definitions/segment_handlers.getSegmentsHistoryReportLinkOutDTO"
                         }
                     }
                 }
@@ -249,6 +249,17 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "segment_handlers.getSegmentsHistoryReportLinkOutDTO": {
+            "type": "object",
+            "properties": {
+                "expirationTime": {
+                    "type": "string"
+                },
+                "reportLink": {
+                    "type": "string"
+                }
+            }
+        },
         "segments.AddSegmentEntry": {
             "type": "object",
             "required": [
