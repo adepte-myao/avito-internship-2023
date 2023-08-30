@@ -1,4 +1,4 @@
-package user_handlers
+package segment_handlers
 
 import (
 	"encoding/json"
@@ -6,14 +6,14 @@ import (
 	"net/http"
 
 	"avito-internship-2023/internal/pkg/common"
-	"avito-internship-2023/internal/segments"
+	"avito-internship-2023/internal/segments/segments_core"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
 
 type remover interface {
-	RemoveUser(dto segments.RemoveUserDTO) error
+	RemoveSegment(dto segments_core.RemoveSegmentDTO) error
 }
 
 type RemoveHandler struct {
@@ -28,15 +28,15 @@ func NewRemoveHandler(remover remover, validate *validator.Validate) *RemoveHand
 	}
 }
 
-// Handle of user_handlers/RemoveHandler
-// @Tags user
-// @Description Removes user from local storage and excludes him from all segments he has
+// Handle of segment_handlers/RemoveHandler
+// @Tags segment
+// @Description Removes given segment and excludes all users from it
 // @Accept json
-// @Param input body segments.RemoveUserDTO true "userID to remove"
+// @Param input body segments.RemoveSegmentDTO true "slug of segment to remove"
 // @Success 204
-// @Router /segments/remove-user [delete]
+// @Router /segments/remove [delete]
 func (handler *RemoveHandler) Handle(c *gin.Context) {
-	var dto segments.RemoveUserDTO
+	var dto segments_core.RemoveSegmentDTO
 	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {
 		err = fmt.Errorf("%w: %w", common.ErrJSONUnmarshalling, err)
 		_ = c.Error(err)
@@ -48,7 +48,7 @@ func (handler *RemoveHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	if err := handler.remover.RemoveUser(dto); err != nil {
+	if err := handler.remover.RemoveSegment(dto); err != nil {
 		_ = c.Error(err)
 		return
 	}

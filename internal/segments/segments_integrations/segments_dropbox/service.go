@@ -1,4 +1,4 @@
-package segment_dropbox
+package segments_dropbox
 
 import (
 	"bytes"

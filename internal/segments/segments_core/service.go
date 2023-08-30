@@ -1,4 +1,4 @@
-package segments
+package segments_core
 
 import (
 	"bytes"

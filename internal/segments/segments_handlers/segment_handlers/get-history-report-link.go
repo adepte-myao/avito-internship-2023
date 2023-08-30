@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"avito-internship-2023/internal/pkg/common"
-	"avito-internship-2023/internal/segments"
+	"avito-internship-2023/internal/segments/segments_core"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -18,7 +18,7 @@ type getSegmentsHistoryReportLinkOutDTO struct {
 }
 
 type reportLinkGetter interface {
-	GetHistoryReportLink(dto segments.GetSegmentsHistoryReportLinkDTO) (string, error)
+	GetHistoryReportLink(dto segments_core.GetSegmentsHistoryReportLinkDTO) (string, error)
 }
 
 type GetHistoryReportLinkHandler struct {
@@ -43,7 +43,7 @@ func NewGetHistoryReportLinkHandler(reportLinkGetter reportLinkGetter, validate 
 // @Success 200 {object} getSegmentsHistoryReportLinkOutDTO
 // @Router /segments/get-history-report-link [get]
 func (handler *GetHistoryReportLinkHandler) Handle(c *gin.Context) {
-	var dto segments.GetSegmentsHistoryReportLinkDTO
+	var dto segments_core.GetSegmentsHistoryReportLinkDTO
 	if err := c.BindQuery(&dto); err != nil {
 		err = fmt.Errorf("%w: %w", common.ErrBindFailed, err)
 		_ = c.Error(err)

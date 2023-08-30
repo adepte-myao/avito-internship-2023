@@ -1,4 +1,4 @@
-package segment_postgres
+package segments_postgres
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 
 	"avito-internship-2023/internal/pkg/common"
 	"avito-internship-2023/internal/pkg/postgres"
-	"avito-internship-2023/internal/segments"
+	"avito-internship-2023/internal/segments/segments_core"
 
 	"github.com/lib/pq"
 )
@@ -57,7 +57,7 @@ func (repo *SegmentRepository) Commit(ctx context.Context) error {
 	return nil
 }
 
-func (repo *SegmentRepository) GetAllAsMap(ctx context.Context) (map[string]segments.Segment, error) {
+func (repo *SegmentRepository) GetAllAsMap(ctx context.Context) (map[string]segments_core.Segment, error) {
 	executor, err := getExecutor(ctx, repo.db)
 	if err != nil {
 		return nil, err
@@ -68,9 +68,9 @@ func (repo *SegmentRepository) GetAllAsMap(ctx context.Context) (map[string]segm
 		return nil, err
 	}
 
-	segmentsMap := make(map[string]segments.Segment)
+	segmentsMap := make(map[string]segments_core.Segment)
 	for rows.Next() {
-		var segment segments.Segment
+		var segment segments_core.Segment
 		err = rows.Scan(&segment.Slug)
 		if err != nil {
 			return nil, err
@@ -115,7 +115,7 @@ func (repo *SegmentRepository) GetForUser(ctx context.Context, userID string) ([
 	return slugs, nil
 }
 
-func (repo *SegmentRepository) Create(ctx context.Context, segment segments.Segment) error {
+func (repo *SegmentRepository) Create(ctx context.Context, segment segments_core.Segment) error {
 	executor, err := getExecutor(ctx, repo.db)
 	if err != nil {
 		return err
@@ -153,7 +153,7 @@ func (repo *SegmentRepository) Remove(ctx context.Context, slug string) error {
 	return nil
 }
 
-func (repo *SegmentRepository) prepareHistoryEntriesForSegmentRemove(ctx context.Context, slug string) ([]segments.UserSegmentHistoryEntry, error) {
+func (repo *SegmentRepository) prepareHistoryEntriesForSegmentRemove(ctx context.Context, slug string) ([]segments_core.UserSegmentHistoryEntry, error) {
 	executor, err := getExecutor(ctx, repo.db)
 	if err != nil {
 		return nil, err
@@ -179,12 +179,12 @@ func (repo *SegmentRepository) prepareHistoryEntriesForSegmentRemove(ctx context
 		return nil, err
 	}
 
-	historyEntries := make([]segments.UserSegmentHistoryEntry, len(userIDsInSegment))
+	historyEntries := make([]segments_core.UserSegmentHistoryEntry, len(userIDsInSegment))
 	for i, userID := range userIDsInSegment {
-		historyEntries[i] = segments.UserSegmentHistoryEntry{
+		historyEntries[i] = segments_core.UserSegmentHistoryEntry{
 			UserID:     userID,
 			Slug:       slug,
-			ActionType: segments.Removed,
+			ActionType: segments_core.Removed,
 			LogTime:    time.Now(),
 		}
 	}
@@ -219,14 +219,14 @@ func (repo *SegmentRepository) AddUsersToSegments(ctx context.Context, userIDs, 
 		return err
 	}
 
-	historyEntries := make([]segments.UserSegmentHistoryEntry, len(userIDs)*len(slugs))
+	historyEntries := make([]segments_core.UserSegmentHistoryEntry, len(userIDs)*len(slugs))
 	for i, userID := range userIDs {
 		for j, slug := range slugs {
 			index := i*len(slugs) + j
-			historyEntries[index] = segments.UserSegmentHistoryEntry{
+			historyEntries[index] = segments_core.UserSegmentHistoryEntry{
 				UserID:     userID,
 				Slug:       slug,
-				ActionType: segments.Added,
+				ActionType: segments_core.Added,
 				LogTime:    time.Now(),
 			}
 		}
@@ -251,12 +251,12 @@ func (repo *SegmentRepository) RemoveSegmentsForUser(ctx context.Context, userID
 		return err
 	}
 
-	historyEntries := make([]segments.UserSegmentHistoryEntry, len(slugsToRemove))
+	historyEntries := make([]segments_core.UserSegmentHistoryEntry, len(slugsToRemove))
 	for i, slug := range slugsToRemove {
-		historyEntries[i] = segments.UserSegmentHistoryEntry{
+		historyEntries[i] = segments_core.UserSegmentHistoryEntry{
 			UserID:     userID,
 			Slug:       slug,
-			ActionType: segments.Removed,
+			ActionType: segments_core.Removed,
 			LogTime:    time.Now(),
 		}
 	}

@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 
 	"avito-internship-2023/internal/pkg/common"
-	"avito-internship-2023/internal/segments"
+	"avito-internship-2023/internal/segments/segments_core"
 
 	"github.com/segmentio/kafka-go"
 )
 
 type userActionProcessor interface {
-	ProcessUserAction(dto segments.UserActionDTO)
+	ProcessUserAction(dto segments_core.UserActionDTO)
 }
 
 type UserActionConsumer struct {
@@ -36,7 +36,7 @@ func (consumer *UserActionConsumer) StartConsuming() error {
 			continue
 		}
 
-		var dto segments.UserActionDTO
+		var dto segments_core.UserActionDTO
 		if err = json.Unmarshal(msg.Value, &dto); err != nil {
 			// No sensitive data is sent, so message output can include some useful info
 			consumer.logger.Errorw(err.Error(),

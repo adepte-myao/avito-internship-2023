@@ -1,4 +1,4 @@
-package segment_postgres
+package segments_postgres
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"avito-internship-2023/internal/pkg/common"
 	"avito-internship-2023/internal/pkg/postgres"
-	"avito-internship-2023/internal/segments"
+	"avito-internship-2023/internal/segments/segments_core"
 )
 
 type UserSegmentHistoryRepository struct {
@@ -20,7 +20,7 @@ func NewUserSegmentHistoryRepository(logger common.Logger, db *sql.DB) *UserSegm
 	return &UserSegmentHistoryRepository{logger: logger, db: db}
 }
 
-func (repo *UserSegmentHistoryRepository) GetAllForUser(ctx context.Context, userID string, month, year int) ([]segments.UserSegmentHistoryEntry, error) {
+func (repo *UserSegmentHistoryRepository) GetAllForUser(ctx context.Context, userID string, month, year int) ([]segments_core.UserSegmentHistoryEntry, error) {
 	executor, err := getExecutor(ctx, repo.db)
 	if err != nil {
 		return nil, err
@@ -34,9 +34,9 @@ func (repo *UserSegmentHistoryRepository) GetAllForUser(ctx context.Context, use
 		return nil, err
 	}
 
-	historyEntries := make([]segments.UserSegmentHistoryEntry, 0)
+	historyEntries := make([]segments_core.UserSegmentHistoryEntry, 0)
 	for rows.Next() {
-		var entry segments.UserSegmentHistoryEntry
+		var entry segments_core.UserSegmentHistoryEntry
 		err = rows.Scan(&entry.UserID, &entry.Slug, &entry.ActionType, &entry.LogTime)
 		if err != nil {
 			return nil, err
@@ -52,7 +52,7 @@ func (repo *UserSegmentHistoryRepository) GetAllForUser(ctx context.Context, use
 	return historyEntries, nil
 }
 
-func (repo *UserSegmentHistoryRepository) AddEntries(ctx context.Context, entries []segments.UserSegmentHistoryEntry) error {
+func (repo *UserSegmentHistoryRepository) AddEntries(ctx context.Context, entries []segments_core.UserSegmentHistoryEntry) error {
 	if len(entries) == 0 {
 		return nil
 	}

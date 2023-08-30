@@ -1,4 +1,4 @@
-package user_service
+package segments_user_service
 
 import (
 	"context"
@@ -7,15 +7,15 @@ import (
 	"math/rand"
 	"time"
 
-	"avito-internship-2023/internal/segments"
-	"avito-internship-2023/internal/segments/segment_postgres"
+	"avito-internship-2023/internal/segments/segments_core"
+	"avito-internship-2023/internal/segments/segments_repositories/segments_postgres"
 
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
 
 type userProvider interface {
-	GetRandom(ctx context.Context) (segments.User, error)
+	GetRandom(ctx context.Context) (segments_core.User, error)
 }
 
 type Mock struct {
@@ -45,25 +45,25 @@ func (service *Mock) StartProducing(mockMaxProducePeriod int) error {
 	}
 }
 
-func (service *Mock) GetStatus(userID string) (segments.UserStatus, error) {
+func (service *Mock) GetStatus(userID string) (segments_core.UserStatus, error) {
 	usActionProb := rand.Float64()
 	if usActionProb < 0.25 {
 		// User tries to remove his account or is banned or there is a reason we shouldn't treat him as usual
-		return segments.Excluded, nil
+		return segments_core.Excluded, nil
 	}
 	if usActionProb < 0.3 {
 		// User was removed from user service
-		return "", segments.ErrUserNotFound
+		return "", segments_core.ErrUserNotFound
 	}
 	// User was created or his status was returned to normal
-	return segments.Active, nil
+	return segments_core.Active, nil
 }
 
 func (service *Mock) ProduceEvent() error {
 	usActionProb := rand.Float64()
 
 	var (
-		user segments.User
+		user segments_core.User
 		err  error
 	)
 	if usActionProb < 0.8 {
@@ -71,15 +71,15 @@ func (service *Mock) ProduceEvent() error {
 		user, err = service.userProvider.GetRandom(service.ctx)
 	} else {
 		// For operations with non-existing user
-		user = segments.User{Id: uuid.New().String()}
+		user = segments_core.User{Id: uuid.New().String()}
 	}
-	if errors.Is(err, segment_postgres.ErrNoUsersToPick) {
-		user = segments.User{Id: uuid.New().String()}
+	if errors.Is(err, segments_postgres.ErrNoUsersToPick) {
+		user = segments_core.User{Id: uuid.New().String()}
 	} else if err != nil {
 		return err
 	}
 
-	dto := segments.UserActionDTO{UserID: user.Id}
+	dto := segments_core.UserActionDTO{UserID: user.Id}
 	message, err := json.Marshal(dto)
 	if err != nil {
 		return err

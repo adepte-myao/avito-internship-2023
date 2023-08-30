@@ -16,13 +16,13 @@ import (
 	"avito-internship-2023/internal/pkg/postgres"
 	"avito-internship-2023/internal/pkg/server"
 	"avito-internship-2023/internal/pkg/zap_wrapper"
-	"avito-internship-2023/internal/segments"
-	"avito-internship-2023/internal/segments/segment_dropbox"
-	"avito-internship-2023/internal/segments/segment_handlers"
-	"avito-internship-2023/internal/segments/segment_postgres"
-	"avito-internship-2023/internal/segments/user_handlers"
-	"avito-internship-2023/internal/segments/user_kafka_consumers"
-	"avito-internship-2023/internal/segments/user_service"
+	"avito-internship-2023/internal/segments/segments_consumers/user_kafka_consumers"
+	"avito-internship-2023/internal/segments/segments_core"
+	"avito-internship-2023/internal/segments/segments_handlers/segment_handlers"
+	"avito-internship-2023/internal/segments/segments_handlers/user_handlers"
+	"avito-internship-2023/internal/segments/segments_integrations/segments_dropbox"
+	"avito-internship-2023/internal/segments/segments_integrations/segments_user_service"
+	"avito-internship-2023/internal/segments/segments_repositories/segments_postgres"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -67,13 +67,13 @@ func main() {
 
 	segmentsLogger := logger.With("domain", "segments")
 
-	historyRepo := segment_postgres.NewUserSegmentHistoryRepository(
+	historyRepo := segments_postgres.NewUserSegmentHistoryRepository(
 		segmentsLogger.With("caller_type", "UserSegmentHistoryRepository"), postgresDB)
-	userRepo := segment_postgres.NewUserRepository(
+	userRepo := segments_postgres.NewUserRepository(
 		segmentsLogger.With("caller_type", "UserRepository"), postgresDB, historyRepo)
-	segmentRepo := segment_postgres.NewSegmentRepository(
+	segmentRepo := segments_postgres.NewSegmentRepository(
 		segmentsLogger.With("caller_type", "SegmentRepository"), postgresDB, historyRepo)
-	deadlineRepo := segment_postgres.NewUserSegmentDeadlineRepository(
+	deadlineRepo := segments_postgres.NewUserSegmentDeadlineRepository(
 		segmentsLogger.With("caller_type", "UserSegmentDeadlineRepository"), postgresDB, historyRepo)
 
 	// Buffer must be big enough to hold all possible errors: it prevents goroutine leak.
@@ -96,7 +96,7 @@ func main() {
 		mockMaxProducePeriod = 5
 	}
 
-	userService := user_service.NewMock(userServiceCtx, userRepo, kafkaUserActionWriter)
+	userService := segments_user_service.NewMock(userServiceCtx, userRepo, kafkaUserActionWriter)
 	go func() {
 		err := userService.StartProducing(mockMaxProducePeriod)
 		errorChannel <- err
@@ -112,7 +112,7 @@ func main() {
 		deadlineCheckPeriod = 30
 	}
 
-	deadlineWorker := segments.NewDeadlineWorker(segmentsLogger.With("caller_type", "DeadlineWorker"), deadlineWorkerCtx, deadlineRepo, segmentRepo)
+	deadlineWorker := segments_core.NewDeadlineWorker(segmentsLogger.With("caller_type", "DeadlineWorker"), deadlineWorkerCtx, deadlineRepo, segmentRepo)
 	go func() {
 		err := deadlineWorker.Start(deadlineCheckPeriod)
 		errorChannel <- err
@@ -121,13 +121,13 @@ func main() {
 	dropboxCtx, cancelDropboxCtx := context.WithCancel(appContext)
 	defer cancelDropboxCtx()
 
-	dropboxService := segment_dropbox.NewService(
+	dropboxService := segments_dropbox.NewService(
 		dropboxCtx, segmentsLogger.With("caller_type", "DropboxService"), os.Getenv("DROPBOX_TOKEN"))
 
 	serviceCtx, cancelServiceCtx := context.WithCancel(appContext)
 	defer cancelServiceCtx()
 
-	service := segments.NewService(
+	service := segments_core.NewService(
 		segmentsLogger.With("caller_type", "Service"), serviceCtx, userService, userRepo,
 		segmentRepo, historyRepo, deadlineRepo, dropboxService)
 

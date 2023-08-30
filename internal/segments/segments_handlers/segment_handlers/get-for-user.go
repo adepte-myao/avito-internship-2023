@@ -5,14 +5,14 @@ import (
 	"net/http"
 
 	"avito-internship-2023/internal/pkg/common"
-	"avito-internship-2023/internal/segments"
+	"avito-internship-2023/internal/segments/segments_core"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
 
 type segmentsGetter interface {
-	GetSegmentsForUser(dto segments.GetSegmentsForUserDTO) (segments.GetSegmentsForUserOutDTO, error)
+	GetSegmentsForUser(dto segments_core.GetSegmentsForUserDTO) (segments_core.GetSegmentsForUserOutDTO, error)
 }
 
 type GetForUserHandler struct {
@@ -35,7 +35,7 @@ func NewGetForUserHandler(segmentsGetter segmentsGetter, validate *validator.Val
 // @Success 200 {object} segments.GetSegmentsForUserOutDTO
 // @Router /segments/get-for-user [get]
 func (handler *GetForUserHandler) Handle(c *gin.Context) {
-	var dto segments.GetSegmentsForUserDTO
+	var dto segments_core.GetSegmentsForUserDTO
 	if err := c.BindQuery(&dto); err != nil {
 		err = fmt.Errorf("%w: %w", common.ErrBindFailed, err)
 		_ = c.Error(err)

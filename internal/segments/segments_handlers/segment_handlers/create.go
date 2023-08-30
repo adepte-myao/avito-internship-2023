@@ -6,14 +6,14 @@ import (
 	"net/http"
 
 	"avito-internship-2023/internal/pkg/common"
-	"avito-internship-2023/internal/segments"
+	"avito-internship-2023/internal/segments/segments_core"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
 
 type creator interface {
-	CreateSegment(dto segments.CreateSegmentDTO) error
+	CreateSegment(dto segments_core.CreateSegmentDTO) error
 }
 
 type CreateHandler struct {
@@ -36,7 +36,7 @@ func NewCreateHandler(creator creator, validate *validator.Validate) *CreateHand
 // @Success 204
 // @Router /segments/create [post]
 func (handler *CreateHandler) Handle(c *gin.Context) {
-	var dto segments.CreateSegmentDTO
+	var dto segments_core.CreateSegmentDTO
 	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {
 		err = fmt.Errorf("%w: %w", common.ErrJSONUnmarshalling, err)
 		_ = c.Error(err)

@@ -6,14 +6,14 @@ import (
 	"net/http"
 
 	"avito-internship-2023/internal/pkg/common"
-	"avito-internship-2023/internal/segments"
+	"avito-internship-2023/internal/segments/segments_core"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
 
 type updater interface {
-	UpdateUser(dto segments.UpdateUserDTO) error
+	UpdateUser(dto segments_core.UpdateUserDTO) error
 }
 
 type UpdateHandler struct {
@@ -36,7 +36,7 @@ func NewUpdateHandler(updater updater, validate *validator.Validate) *UpdateHand
 // @Success 204
 // @Router /segments/update-user [put]
 func (handler *UpdateHandler) Handle(c *gin.Context) {
-	var dto segments.UpdateUserDTO
+	var dto segments_core.UpdateUserDTO
 	if err := json.NewDecoder(c.Request.Body).Decode(&dto); err != nil {
 		err = fmt.Errorf("%w: %w", common.ErrJSONUnmarshalling, err)
 		_ = c.Error(err)
