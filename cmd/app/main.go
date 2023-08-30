@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -15,6 +15,7 @@ import (
 	"avito-internship-2023/internal/pkg/error_middleware"
 	"avito-internship-2023/internal/pkg/postgres"
 	"avito-internship-2023/internal/pkg/server"
+	"avito-internship-2023/internal/pkg/zap_wrapper"
 	"avito-internship-2023/internal/segments"
 	"avito-internship-2023/internal/segments/segment_dropbox"
 	"avito-internship-2023/internal/segments/segment_handlers"
@@ -29,57 +30,106 @@ import (
 	"github.com/segmentio/kafka-go"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 // @title Avito Internship Service: User Segments
 // @version 1.0
 
-const (
-	deadlineCheckPeriodInSeconds = 30
-	mockProducePeriodInSeconds   = 1
-)
-
 func main() {
 	err := godotenv.Load("deploy_user_segmenting/.env")
 	if err != nil {
-		fmt.Print(err)
-		return
+		log.Fatal(err)
 	}
 
-	encoderConfig := zap.NewProductionEncoderConfig()
-	encoderConfig.TimeKey = "timestamp"
-	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-
-	logConfig := zap.NewProductionConfig()
-	logConfig.EncoderConfig = encoderConfig
-
-	baseLogger, err := logConfig.Build()
+	logger, closeLoggerFunc, err := zap_wrapper.NewDevSugaredLogger()
 	if err != nil {
-		log.Fatalf("can't initialize zap logger: %v", err)
+		log.Fatal(err)
 	}
 	defer func() {
-		if err = baseLogger.Sync(); err != nil {
-			log.Fatalf("can't flush log entities: %v", err)
+		if err = closeLoggerFunc(); err != nil {
+			log.Println(err)
 		}
 	}()
 
-	logger := baseLogger.Sugar()
-
 	validate := validator.New()
 
-	dbContext, cancelContext := context.WithCancel(context.Background())
-	defer cancelContext()
+	appContext, cancelAppContext := context.WithCancel(context.Background())
+	defer cancelAppContext()
 
 	dbConnectionString := fmt.Sprintf("postgres://%s:%s@db:5432/%s?sslmode=disable",
 		os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"), os.Getenv("POSTGRES_DB"))
 
 	postgresDB, cancelDB, err := postgres.NewDatabase(dbConnectionString)
 	if err != nil {
-		logger.Fatal("cannot open postgres connection")
+		logger.Fatal("cannot open postgres connection: ", err)
 	}
 	defer cancelDB(postgresDB)
+
+	segmentsLogger := logger.With("domain", "segments")
+
+	historyRepo := segment_postgres.NewUserSegmentHistoryRepository(
+		segmentsLogger.With("caller_type", "UserSegmentHistoryRepository"), postgresDB)
+	userRepo := segment_postgres.NewUserRepository(
+		segmentsLogger.With("caller_type", "UserRepository"), postgresDB, historyRepo)
+	segmentRepo := segment_postgres.NewSegmentRepository(
+		segmentsLogger.With("caller_type", "SegmentRepository"), postgresDB, historyRepo)
+	deadlineRepo := segment_postgres.NewUserSegmentDeadlineRepository(
+		segmentsLogger.With("caller_type", "UserSegmentDeadlineRepository"), postgresDB, historyRepo)
+
+	// Buffer must be big enough to hold all possible errors: it prevents goroutine leak.
+	errorChannel := make(chan error, 50)
+
+	userServiceCtx, cancelUserServiceCtx := context.WithCancel(appContext)
+	defer cancelUserServiceCtx()
+
+	kafkaUserActionWriter := &kafka.Writer{
+		Addr:                   kafka.TCP(os.Getenv("KAFKA_BROKER_ADDR")),
+		Topic:                  os.Getenv("KAFKA_USER_ACTION_TOPIC_NAME"),
+		RequiredAcks:           kafka.RequireOne,
+		AllowAutoTopicCreation: true,
+	}
+
+	mockMaxProducePeriodVal := os.Getenv("USER_SERVICE_MOCK_MAX_PRODUCE_PERIOD_IN_SECONDS")
+	mockMaxProducePeriod, err := strconv.Atoi(mockMaxProducePeriodVal)
+	if err != nil || mockMaxProducePeriod < 1 {
+		logger.Info("value USER_SERVICE_MOCK_MAX_PRODUCE_PERIOD_IN_SECONDS is missed or incorrect, setting default value = 5")
+		mockMaxProducePeriod = 5
+	}
+
+	userService := user_service.NewMock(userServiceCtx, userRepo, kafkaUserActionWriter)
+	go func() {
+		err := userService.StartProducing(mockMaxProducePeriod)
+		errorChannel <- err
+	}()
+
+	deadlineWorkerCtx, cancelDeadlineWorkerCtx := context.WithCancel(appContext)
+	defer cancelDeadlineWorkerCtx()
+
+	deadlineCheckPeriodVal := os.Getenv("DEADLINE_CHECK_PERIOD_IN_SECONDS")
+	deadlineCheckPeriod, err := strconv.Atoi(deadlineCheckPeriodVal)
+	if err != nil || deadlineCheckPeriod < 1 {
+		logger.Info("value DEADLINE_CHECK_PERIOD_IN_SECONDS is missed or incorrect, setting default value = 30")
+		deadlineCheckPeriod = 30
+	}
+
+	deadlineWorker := segments.NewDeadlineWorker(segmentsLogger.With("caller_type", "DeadlineWorker"), deadlineWorkerCtx, deadlineRepo, segmentRepo)
+	go func() {
+		err := deadlineWorker.Start(deadlineCheckPeriod)
+		errorChannel <- err
+	}()
+
+	dropboxCtx, cancelDropboxCtx := context.WithCancel(appContext)
+	defer cancelDropboxCtx()
+
+	dropboxService := segment_dropbox.NewService(
+		dropboxCtx, segmentsLogger.With("caller_type", "DropboxService"), os.Getenv("DROPBOX_TOKEN"))
+
+	serviceCtx, cancelServiceCtx := context.WithCancel(appContext)
+	defer cancelServiceCtx()
+
+	service := segments.NewService(
+		segmentsLogger.With("caller_type", "Service"), serviceCtx, userService, userRepo,
+		segmentRepo, historyRepo, deadlineRepo, dropboxService)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -88,99 +138,51 @@ func main() {
 	docs.SwaggerInfo.BasePath = "/"
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	errorChannel := make(chan error, 5)
-
 	segmentsRouter := router.Group("/segments")
-	{
-		segmentsLogger := logger.With("domain", "segments")
 
-		historyRepo := segment_postgres.NewUserSegmentHistoryRepository(
-			segmentsLogger.With("caller_type", "UserSegmentHistoryRepository"), postgresDB)
-		userRepo := segment_postgres.NewUserRepository(
-			segmentsLogger.With("caller_type", "UserRepository"), postgresDB, historyRepo)
-		segmentRepo := segment_postgres.NewSegmentRepository(
-			segmentsLogger.With("caller_type", "SegmentRepository"), postgresDB, historyRepo)
-		deadlineRepo := segment_postgres.NewUserSegmentDeadlineRepository(
-			segmentsLogger.With("caller_type", "UserSegmentDeadlineRepository"), postgresDB, historyRepo)
+	changeForUserHandler := segment_handlers.NewChangeForUserHandler(service, validate)
+	segmentsRouter.POST("/change-for-user", changeForUserHandler.Handle)
 
-		kafkaWriter := &kafka.Writer{
-			Addr:                   kafka.TCP("kafka:9092"),
-			Topic:                  "UserAction",
-			RequiredAcks:           kafka.RequireOne,
-			AllowAutoTopicCreation: true,
+	createHandler := segment_handlers.NewCreateHandler(service, validate)
+	segmentsRouter.POST("/create", createHandler.Handle)
+
+	getForUserHandler := segment_handlers.NewGetForUserHandler(service, validate)
+	segmentsRouter.GET("/get-for-user", getForUserHandler.Handle)
+
+	getHistoryLinkHandler := segment_handlers.NewGetHistoryReportLinkHandler(service, validate)
+	segmentsRouter.GET("/get-history-report-link", getHistoryLinkHandler.Handle)
+
+	removeHandler := segment_handlers.NewRemoveHandler(service, validate)
+	segmentsRouter.DELETE("/remove", removeHandler.Handle)
+
+	createUserHandler := user_handlers.NewCreateHandler(service, validate)
+	segmentsRouter.POST("/create-user", createUserHandler.Handle)
+
+	removeUserHandler := user_handlers.NewRemoveHandler(service, validate)
+	segmentsRouter.DELETE("/remove-user", removeUserHandler.Handle)
+
+	updateUserHandler := user_handlers.NewUpdateHandler(service, validate)
+	segmentsRouter.PUT("/update-user", updateUserHandler.Handle)
+
+	userActionConsumerCtx, cancelUserActionConsumerCtx := context.WithCancel(appContext)
+	defer cancelUserActionConsumerCtx()
+
+	kafkaReader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:     []string{os.Getenv("KAFKA_BROKER_ADDR")},
+		GroupID:     os.Getenv("KAFKA_CONSUMER_GROUP_ID"),
+		Topic:       os.Getenv("KAFKA_USER_ACTION_TOPIC_NAME"),
+		Dialer:      nil,
+		StartOffset: 0,
+	})
+	userActionConsumer := user_kafka_consumers.NewUserActionConsumer(segmentsLogger, userActionConsumerCtx, kafkaReader, service)
+	go func() {
+		err := userActionConsumer.StartConsuming()
+		errorChannel <- err
+
+		if err = kafkaReader.Close(); err != nil {
+			logger.Error("error when closing kafka reader: ", err)
 		}
-		userService := user_service.NewMock(context.Background(), userRepo, kafkaWriter)
-		go func() {
-			for {
-				toSleepInSeconds := mockProducePeriodInSeconds + rand.Intn(4) - 2
-				time.Sleep(time.Second * time.Duration(toSleepInSeconds))
-
-				err := userService.ProduceEvent()
-				if err != nil {
-					errorChannel <- err
-					return
-				}
-			}
-		}()
-
-		deadlineWorker := segments.NewDeadlineWorker(
-			segmentsLogger.With("caller_type", "DeadlineWorker"), dbContext, deadlineRepo, segmentRepo)
-		go func() {
-			for {
-				time.Sleep(time.Second * deadlineCheckPeriodInSeconds)
-
-				err := deadlineWorker.RemoveExceededUserSegments()
-				if err != nil {
-					errorChannel <- err
-					return
-				}
-			}
-		}()
-
-		dropboxService := segment_dropbox.NewService(
-			context.Background(), segmentsLogger.With("caller_type", "DropboxService"), os.Getenv("DROPBOX_TOKEN"))
-
-		service := segments.NewService(
-			segmentsLogger.With("caller_type", "Service"), dbContext, userService, userRepo,
-			segmentRepo, historyRepo, deadlineRepo, dropboxService)
-
-		changeForUserHandler := segment_handlers.NewChangeForUserHandler(service, validate)
-		segmentsRouter.POST("/change-for-user", changeForUserHandler.Handle)
-
-		createHandler := segment_handlers.NewCreateHandler(service, validate)
-		segmentsRouter.POST("/create", createHandler.Handle)
-
-		getForUserHandler := segment_handlers.NewGetForUserHandler(service, validate)
-		segmentsRouter.GET("/get-for-user", getForUserHandler.Handle)
-
-		getHistoryLinkHandler := segment_handlers.NewGetHistoryReportLinkHandler(service, validate)
-		segmentsRouter.GET("/get-history-report-link", getHistoryLinkHandler.Handle)
-
-		removeHandler := segment_handlers.NewRemoveHandler(service, validate)
-		segmentsRouter.DELETE("/remove", removeHandler.Handle)
-
-		createUserHandler := user_handlers.NewCreateHandler(service, validate)
-		segmentsRouter.POST("/create-user", createUserHandler.Handle)
-
-		removeUserHandler := user_handlers.NewRemoveHandler(service, validate)
-		segmentsRouter.DELETE("/remove-user", removeUserHandler.Handle)
-
-		updateUserHandler := user_handlers.NewUpdateHandler(service, validate)
-		segmentsRouter.PUT("/update-user", updateUserHandler.Handle)
-
-		kafkaReader := kafka.NewReader(kafka.ReaderConfig{
-			Brokers:     []string{"kafka:9092"},
-			GroupID:     "segments",
-			Topic:       "UserAction",
-			Dialer:      nil,
-			StartOffset: 0,
-		})
-		userActionConsumer := user_kafka_consumers.NewUserActionConsumer(segmentsLogger, context.Background(), kafkaReader, service)
-		go func() {
-			err := userActionConsumer.StartConsuming()
-			errorChannel <- err
-		}()
-	}
+	}()
 
 	addr := ":" + os.Getenv("SERVICE_PORT")
 	serv := server.NewServer(logger, router, addr)
@@ -190,8 +192,7 @@ func main() {
 	}()
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT)
-	signal.Notify(sigChan, syscall.SIGTERM)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	select {
 	case sig := <-sigChan:
@@ -206,5 +207,13 @@ func main() {
 	err = errors.Join(serv.Shutdown(tc))
 	if err != nil {
 		logger.Error(err)
+	}
+
+	cancelAppContext()
+	select {
+	case <-tc.Done():
+		return
+	case <-appContext.Done():
+		return
 	}
 }

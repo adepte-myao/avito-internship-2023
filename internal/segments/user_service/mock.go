@@ -32,6 +32,19 @@ func NewMock(ctx context.Context, userProvider userProvider, writer *kafka.Write
 	}
 }
 
+// StartProducing works as http.ListenAndServe: blocks calling routine and can return only non-nil error
+func (service *Mock) StartProducing(mockMaxProducePeriod int) error {
+	for {
+		toSleepInSeconds := rand.Intn(mockMaxProducePeriod + 1)
+		time.Sleep(time.Second * time.Duration(toSleepInSeconds))
+
+		err := service.ProduceEvent()
+		if err != nil {
+			return err
+		}
+	}
+}
+
 func (service *Mock) GetStatus(userID string) (segments.UserStatus, error) {
 	usActionProb := rand.Float64()
 	if usActionProb < 0.25 {

@@ -23,6 +23,18 @@ func NewDeadlineWorker(logger common.Logger, providerCtx context.Context, deadli
 	return &DeadlineWorker{logger: logger, providerCtx: providerCtx, deadlineProvider: deadlineProvider, segmentsProvider: segmentsProvider}
 }
 
+// Start works as http.ListenAndServe: blocks calling routine and can return only non-nil error
+func (worker *DeadlineWorker) Start(deadlineCheckPeriodInSeconds int) error {
+	for {
+		time.Sleep(time.Second * time.Duration(deadlineCheckPeriodInSeconds))
+
+		err := worker.RemoveExceededUserSegments()
+		if err != nil {
+			return err
+		}
+	}
+}
+
 func (worker *DeadlineWorker) RemoveExceededUserSegments() error {
 	deadlines, err := worker.deadlineProvider.GetAllBefore(worker.providerCtx, time.Now())
 	if err != nil {
