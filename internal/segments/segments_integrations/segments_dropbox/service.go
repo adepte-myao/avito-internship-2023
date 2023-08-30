@@ -51,7 +51,10 @@ func (service *Service) SaveCSVReportWithURLAccess(content io.Reader) (string, e
 }
 
 func (service *Service) saveFileWithPath(content io.Reader, path string) error {
-	req, err := http.NewRequestWithContext(service.ctx, http.MethodPost, UploadUrl, content)
+	execCtx, cancelExec := context.WithTimeout(service.ctx, 10*time.Second)
+	defer cancelExec()
+
+	req, err := http.NewRequestWithContext(execCtx, http.MethodPost, UploadUrl, content)
 	if err != nil {
 		return err
 	}
@@ -94,7 +97,10 @@ func (service *Service) getTempLink(path string) (string, error) {
 		return "", err
 	}
 
-	req, err := http.NewRequestWithContext(service.ctx, http.MethodPost, GetTemporaryLinkUrl, bytes.NewReader(reqBody))
+	execCtx, cancelExec := context.WithTimeout(service.ctx, 10*time.Second)
+	defer cancelExec()
+
+	req, err := http.NewRequestWithContext(execCtx, http.MethodPost, GetTemporaryLinkUrl, bytes.NewReader(reqBody))
 	if err != nil {
 		return "", err
 	}

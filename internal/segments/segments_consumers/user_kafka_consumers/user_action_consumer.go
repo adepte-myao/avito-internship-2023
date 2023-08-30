@@ -3,6 +3,7 @@ package user_kafka_consumers
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"avito-internship-2023/internal/pkg/common"
 	"avito-internship-2023/internal/segments/segments_core/segments_ports"
@@ -26,11 +27,16 @@ func (consumer *UserActionConsumer) StartConsuming() error {
 	consumer.logger.Info("starting UserActionConsumer")
 
 	for {
-		msg, err := consumer.reader.FetchMessage(consumer.ctx)
+		fetchCtx, cancelFetch := context.WithTimeout(consumer.ctx, 5*time.Second)
+
+		msg, err := consumer.reader.FetchMessage(fetchCtx)
 		if err != nil {
+			cancelFetch()
 			consumer.logger.Error(err)
 			continue
 		}
+
+		cancelFetch()
 
 		var dto userActionDTO
 		if err = json.Unmarshal(msg.Value, &dto); err != nil {
@@ -45,9 +51,14 @@ func (consumer *UserActionConsumer) StartConsuming() error {
 
 		consumer.processor.ProcessUserAction(dto.UserID)
 
-		if err = consumer.reader.CommitMessages(consumer.ctx, msg); err != nil {
+		commitCtx, cancelCommit := context.WithTimeout(consumer.ctx, 5*time.Second)
+
+		if err = consumer.reader.CommitMessages(commitCtx, msg); err != nil {
+			cancelCommit()
 			consumer.logger.Error(err)
 			continue
 		}
+
+		cancelCommit()
 	}
 }

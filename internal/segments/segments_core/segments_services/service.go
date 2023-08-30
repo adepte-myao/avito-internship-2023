@@ -49,7 +49,10 @@ func NewService(logger common.Logger, providerContext context.Context, userServi
 }
 
 func (service *Service) ChangeSegmentsForUser(dto segments_ports.ChangeSegmentsForUserDTO) error {
-	txCtx, err := service.segmentsProvider.BeginTransaction(service.providerContext)
+	execCtx, cancelExec := context.WithTimeout(service.providerContext, time.Second)
+	defer cancelExec()
+
+	txCtx, err := service.segmentsProvider.BeginTransaction(execCtx)
 	if err != nil {
 		service.logger.Error(err)
 		return err
@@ -184,7 +187,10 @@ func (service *Service) addDeadlines(userID string, segmentsToAdd []segments_por
 }
 
 func (service *Service) GetSegmentsForUser(dto segments_ports.GetSegmentsForUserDTO) (segments_ports.GetSegmentsForUserOutDTO, error) {
-	slugs, err := service.segmentsProvider.GetForUser(service.providerContext, dto.UserID)
+	execCtx, cancelExec := context.WithTimeout(service.providerContext, time.Second)
+	defer cancelExec()
+
+	slugs, err := service.segmentsProvider.GetForUser(execCtx, dto.UserID)
 	if err != nil {
 		return segments_ports.GetSegmentsForUserOutDTO{}, err
 	}
@@ -193,7 +199,10 @@ func (service *Service) GetSegmentsForUser(dto segments_ports.GetSegmentsForUser
 }
 
 func (service *Service) GetHistoryReportLink(dto segments_ports.GetSegmentsHistoryReportLinkDTO) (string, error) {
-	entries, err := service.historyProvider.GetAllForUser(service.providerContext, dto.UserID, dto.Month, dto.Year)
+	execCtx, cancelExec := context.WithTimeout(service.providerContext, time.Second)
+	defer cancelExec()
+
+	entries, err := service.historyProvider.GetAllForUser(execCtx, dto.UserID, dto.Month, dto.Year)
 	if err != nil {
 		return "", err
 	}
@@ -219,7 +228,10 @@ func (service *Service) GetHistoryReportLink(dto segments_ports.GetSegmentsHisto
 }
 
 func (service *Service) CreateSegment(dto segments_ports.CreateSegmentDTO) error {
-	txCtx, err := service.segmentsProvider.BeginTransaction(service.providerContext)
+	execCtx, cancelExec := context.WithTimeout(service.providerContext, time.Second)
+	defer cancelExec()
+
+	txCtx, err := service.segmentsProvider.BeginTransaction(execCtx)
 	if err != nil {
 		service.logger.Error(err)
 		return err
@@ -321,11 +333,17 @@ func (service *Service) getPercentOfUsers(ctx context.Context, percent float64) 
 }
 
 func (service *Service) RemoveSegment(dto segments_ports.RemoveSegmentDTO) error {
-	return service.segmentsProvider.Remove(service.providerContext, dto.Slug)
+	execCtx, cancelExec := context.WithTimeout(service.providerContext, time.Second)
+	defer cancelExec()
+
+	return service.segmentsProvider.Remove(execCtx, dto.Slug)
 }
 
 func (service *Service) CreateUser(dto segments_ports.CreateUserDTO) error {
-	return service.userLocalProvider.Create(service.providerContext, segments_domain.User{Id: dto.UserID, Status: segments_domain.Active})
+	execCtx, cancelExec := context.WithTimeout(service.providerContext, time.Second)
+	defer cancelExec()
+
+	return service.userLocalProvider.Create(execCtx, segments_domain.User{Id: dto.UserID, Status: segments_domain.Active})
 }
 
 func (service *Service) UpdateUser(dto segments_ports.UpdateUserDTO) error {
@@ -333,17 +351,26 @@ func (service *Service) UpdateUser(dto segments_ports.UpdateUserDTO) error {
 		return err
 	}
 
-	return service.userLocalProvider.Update(service.providerContext, segments_domain.User{Id: dto.UserID, Status: dto.Status})
+	execCtx, cancelExec := context.WithTimeout(service.providerContext, time.Second)
+	defer cancelExec()
+
+	return service.userLocalProvider.Update(execCtx, segments_domain.User{Id: dto.UserID, Status: dto.Status})
 }
 
 func (service *Service) RemoveUser(dto segments_ports.RemoveUserDTO) error {
-	return service.userLocalProvider.Remove(service.providerContext, dto.UserID)
+	execCtx, cancelExec := context.WithTimeout(service.providerContext, time.Second)
+	defer cancelExec()
+
+	return service.userLocalProvider.Remove(execCtx, dto.UserID)
 }
 
 func (service *Service) ProcessUserAction(userID string) {
+	execCtx, cancelExec := context.WithTimeout(service.providerContext, time.Second)
+	defer cancelExec()
+
 	userStatus, err := service.userServiceProvider.GetStatus(userID)
 	if errors.Is(err, segments_domain.ErrUserNotFound) {
-		err = service.userLocalProvider.Remove(context.TODO(), userID)
+		err = service.userLocalProvider.Remove(execCtx, userID)
 		if err != nil {
 			service.logger.Error(err)
 		}
@@ -355,18 +382,18 @@ func (service *Service) ProcessUserAction(userID string) {
 		return
 	}
 
-	transactionCtx, err := service.userLocalProvider.BeginTransaction(service.providerContext)
+	txCtx, err := service.segmentsProvider.BeginTransaction(execCtx)
 	if err != nil {
 		service.logger.Error(err)
 		return
 	}
 	defer func() {
-		if err = service.userLocalProvider.Rollback(transactionCtx); err != nil {
+		if err = service.userLocalProvider.Rollback(txCtx); err != nil {
 			service.logger.Error(err)
 		}
 	}()
 
-	exists, err := service.userLocalProvider.Exists(transactionCtx, userID)
+	exists, err := service.userLocalProvider.Exists(txCtx, userID)
 	if err != nil {
 		service.logger.Error(err)
 		return
@@ -374,16 +401,16 @@ func (service *Service) ProcessUserAction(userID string) {
 
 	targetUser := segments_domain.User{Id: userID, Status: userStatus}
 	if exists {
-		err = service.userLocalProvider.Update(transactionCtx, targetUser)
+		err = service.userLocalProvider.Update(txCtx, targetUser)
 	} else {
-		err = service.userLocalProvider.Create(transactionCtx, targetUser)
+		err = service.userLocalProvider.Create(txCtx, targetUser)
 	}
 	if err != nil {
 		service.logger.Error(err)
 		return
 	}
 
-	if err = service.userLocalProvider.Commit(transactionCtx); err != nil {
+	if err = service.userLocalProvider.Commit(txCtx); err != nil {
 		service.logger.Error(err)
 		return
 	}

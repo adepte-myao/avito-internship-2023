@@ -33,7 +33,10 @@ func (worker *DeadlineWorker) Start(deadlineCheckPeriodInSeconds int) error {
 }
 
 func (worker *DeadlineWorker) RemoveExceededUserSegments() error {
-	deadlines, err := worker.deadlineProvider.GetAllBefore(worker.providerCtx, time.Now())
+	execContext, cancelExec := context.WithTimeout(worker.providerCtx, 10*time.Second)
+	defer cancelExec()
+
+	deadlines, err := worker.deadlineProvider.GetAllBefore(execContext, time.Now())
 	if err != nil {
 		worker.logger.Error(err)
 		return err
@@ -41,7 +44,7 @@ func (worker *DeadlineWorker) RemoveExceededUserSegments() error {
 
 	deadlinesMap := deadlinesToUserIDMap(deadlines)
 	for userID, slugsToRemove := range deadlinesMap {
-		currentUserSegments, err := worker.segmentsProvider.GetForUser(worker.providerCtx, userID)
+		currentUserSegments, err := worker.segmentsProvider.GetForUser(execContext, userID)
 		if err != nil {
 			worker.logger.Error(err)
 			return err
@@ -49,14 +52,14 @@ func (worker *DeadlineWorker) RemoveExceededUserSegments() error {
 
 		slugsToRemove = excludeDeletedSegments(slugsToRemove, currentUserSegments)
 
-		err = worker.segmentsProvider.RemoveSegmentsForUser(worker.providerCtx, userID, slugsToRemove)
+		err = worker.segmentsProvider.RemoveSegmentsForUser(execContext, userID, slugsToRemove)
 		if err != nil {
 			worker.logger.Error(err)
 			return err
 		}
 	}
 
-	err = worker.deadlineProvider.Remove(worker.providerCtx, deadlines)
+	err = worker.deadlineProvider.Remove(execContext, deadlines)
 	if err != nil {
 		worker.logger.Error(err)
 		return err

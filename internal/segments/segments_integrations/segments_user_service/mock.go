@@ -57,6 +57,9 @@ func (service *Mock) GetStatus(userID string) (segments_domain.UserStatus, error
 }
 
 func (service *Mock) ProduceEvent() error {
+	execCtx, cancelExec := context.WithTimeout(service.ctx, 5*time.Second)
+	defer cancelExec()
+
 	usActionProb := rand.Float64()
 
 	var (
@@ -65,7 +68,7 @@ func (service *Mock) ProduceEvent() error {
 	)
 	if usActionProb < 0.8 {
 		// For operations with existing user
-		user, err = service.userProvider.GetRandom(service.ctx)
+		user, err = service.userProvider.GetRandom(execCtx)
 	} else {
 		// For operations with non-existing user
 		user = segments_domain.User{Id: uuid.New().String()}
@@ -82,10 +85,7 @@ func (service *Mock) ProduceEvent() error {
 		return err
 	}
 
-	writeCtx, cancel := context.WithTimeout(service.ctx, 5*time.Second)
-	defer cancel()
-
-	err = service.writer.WriteMessages(writeCtx, kafka.Message{Value: message})
+	err = service.writer.WriteMessages(execCtx, kafka.Message{Value: message})
 	if err != nil {
 		return err
 	}
