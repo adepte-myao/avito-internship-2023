@@ -10,10 +10,10 @@ import (
 
 	"avito-internship-2023/internal/pkg/common"
 	"avito-internship-2023/internal/pkg/postgres"
-	"avito-internship-2023/internal/segments/segments_core/segments_domain"
-	"avito-internship-2023/internal/segments/segments_core/segments_services"
-	"avito-internship-2023/internal/segments/segments_integrations/segments_dropbox"
-	"avito-internship-2023/internal/segments/segments_repositories/segments_postgres"
+	"avito-internship-2023/internal/segments/core/domain"
+	"avito-internship-2023/internal/segments/core/services"
+	"avito-internship-2023/internal/segments/integrations/dropbox"
+	segmentsPostgres "avito-internship-2023/internal/segments/repositories/postgres"
 
 	"github.com/gin-gonic/gin"
 )
@@ -48,14 +48,14 @@ func New(logger common.Logger) gin.HandlerFunc {
 	errorsMap[sql.ErrConnDone] = databaseError
 	errorsMap[postgres.ErrInvalidContext] = unclassifiedError
 	errorsMap[postgres.ErrInvalidValueType] = unclassifiedError
-	errorsMap[segments_domain.ErrUserNotFound] = validationError
-	errorsMap[segments_domain.ErrInvalidUserStatus] = validationError
-	errorsMap[segments_services.ErrSegmentNotExist] = validationError
-	errorsMap[segments_services.ErrSlugAlreadyInUse] = validationError
-	errorsMap[segments_services.ErrUserDoesNotExist] = validationError
-	errorsMap[segments_services.ErrTooMuchParameters] = validationError
-	errorsMap[segments_dropbox.ErrUnexpectedBehaviour] = externalResourceError
-	errorsMap[segments_postgres.ErrNoUsersToPick] = unclassifiedError
+	errorsMap[domain.ErrUserNotFound] = validationError
+	errorsMap[domain.ErrInvalidUserStatus] = validationError
+	errorsMap[services.ErrSegmentNotExist] = validationError
+	errorsMap[services.ErrSlugAlreadyInUse] = validationError
+	errorsMap[services.ErrUserDoesNotExist] = validationError
+	errorsMap[services.ErrTooMuchParameters] = validationError
+	errorsMap[dropbox.ErrUnexpectedBehaviour] = externalResourceError
+	errorsMap[segmentsPostgres.ErrNoUsersToPick] = unclassifiedError
 
 	codeMap := make(map[ErrorType]int)
 	codeMap[parseError] = http.StatusBadRequest
