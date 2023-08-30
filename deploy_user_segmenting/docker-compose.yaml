@@ -3,7 +3,7 @@ version: '3.8'
 services:
 
   service:
-    container_name: segments_service
+    container_name: segments_services
     build:
       context: ../
       dockerfile: build/docker/service/Dockerfile

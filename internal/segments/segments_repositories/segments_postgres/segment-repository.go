@@ -9,7 +9,7 @@ import (
 
 	"avito-internship-2023/internal/pkg/common"
 	"avito-internship-2023/internal/pkg/postgres"
-	"avito-internship-2023/internal/segments/segments_core"
+	"avito-internship-2023/internal/segments/segments_core/segments_domain"
 
 	"github.com/lib/pq"
 )
@@ -30,11 +30,11 @@ func (repo *SegmentRepository) BeginTransaction(ctx context.Context) (context.Co
 		return nil, err
 	}
 
-	return setTx(ctx, tx), nil
+	return postgres.SetTx(ctx, tx), nil
 }
 
 func (repo *SegmentRepository) Rollback(ctx context.Context) error {
-	tx, err := getTx(ctx)
+	tx, err := postgres.GetTx(ctx)
 	if err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func (repo *SegmentRepository) Rollback(ctx context.Context) error {
 }
 
 func (repo *SegmentRepository) Commit(ctx context.Context) error {
-	tx, err := getTx(ctx)
+	tx, err := postgres.GetTx(ctx)
 	if err != nil {
 		return err
 	}
@@ -57,8 +57,8 @@ func (repo *SegmentRepository) Commit(ctx context.Context) error {
 	return nil
 }
 
-func (repo *SegmentRepository) GetAllAsMap(ctx context.Context) (map[string]segments_core.Segment, error) {
-	executor, err := getExecutor(ctx, repo.db)
+func (repo *SegmentRepository) GetAllAsMap(ctx context.Context) (map[string]segments_domain.Segment, error) {
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return nil, err
 	}
@@ -68,9 +68,9 @@ func (repo *SegmentRepository) GetAllAsMap(ctx context.Context) (map[string]segm
 		return nil, err
 	}
 
-	segmentsMap := make(map[string]segments_core.Segment)
+	segmentsMap := make(map[string]segments_domain.Segment)
 	for rows.Next() {
-		var segment segments_core.Segment
+		var segment segments_domain.Segment
 		err = rows.Scan(&segment.Slug)
 		if err != nil {
 			return nil, err
@@ -87,7 +87,7 @@ func (repo *SegmentRepository) GetAllAsMap(ctx context.Context) (map[string]segm
 }
 
 func (repo *SegmentRepository) GetForUser(ctx context.Context, userID string) ([]string, error) {
-	executor, err := getExecutor(ctx, repo.db)
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return nil, err
 	}
@@ -115,8 +115,8 @@ func (repo *SegmentRepository) GetForUser(ctx context.Context, userID string) ([
 	return slugs, nil
 }
 
-func (repo *SegmentRepository) Create(ctx context.Context, segment segments_core.Segment) error {
-	executor, err := getExecutor(ctx, repo.db)
+func (repo *SegmentRepository) Create(ctx context.Context, segment segments_domain.Segment) error {
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (repo *SegmentRepository) Create(ctx context.Context, segment segments_core
 }
 
 func (repo *SegmentRepository) Remove(ctx context.Context, slug string) error {
-	executor, err := getExecutor(ctx, repo.db)
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return err
 	}
@@ -153,8 +153,8 @@ func (repo *SegmentRepository) Remove(ctx context.Context, slug string) error {
 	return nil
 }
 
-func (repo *SegmentRepository) prepareHistoryEntriesForSegmentRemove(ctx context.Context, slug string) ([]segments_core.UserSegmentHistoryEntry, error) {
-	executor, err := getExecutor(ctx, repo.db)
+func (repo *SegmentRepository) prepareHistoryEntriesForSegmentRemove(ctx context.Context, slug string) ([]segments_domain.UserSegmentHistoryEntry, error) {
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return nil, err
 	}
@@ -179,12 +179,12 @@ func (repo *SegmentRepository) prepareHistoryEntriesForSegmentRemove(ctx context
 		return nil, err
 	}
 
-	historyEntries := make([]segments_core.UserSegmentHistoryEntry, len(userIDsInSegment))
+	historyEntries := make([]segments_domain.UserSegmentHistoryEntry, len(userIDsInSegment))
 	for i, userID := range userIDsInSegment {
-		historyEntries[i] = segments_core.UserSegmentHistoryEntry{
+		historyEntries[i] = segments_domain.UserSegmentHistoryEntry{
 			UserID:     userID,
 			Slug:       slug,
-			ActionType: segments_core.Removed,
+			ActionType: segments_domain.Removed,
 			LogTime:    time.Now(),
 		}
 	}
@@ -197,7 +197,7 @@ func (repo *SegmentRepository) AddUsersToSegments(ctx context.Context, userIDs, 
 		return nil
 	}
 
-	executor, err := getExecutor(ctx, repo.db)
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return err
 	}
@@ -219,14 +219,14 @@ func (repo *SegmentRepository) AddUsersToSegments(ctx context.Context, userIDs, 
 		return err
 	}
 
-	historyEntries := make([]segments_core.UserSegmentHistoryEntry, len(userIDs)*len(slugs))
+	historyEntries := make([]segments_domain.UserSegmentHistoryEntry, len(userIDs)*len(slugs))
 	for i, userID := range userIDs {
 		for j, slug := range slugs {
 			index := i*len(slugs) + j
-			historyEntries[index] = segments_core.UserSegmentHistoryEntry{
+			historyEntries[index] = segments_domain.UserSegmentHistoryEntry{
 				UserID:     userID,
 				Slug:       slug,
-				ActionType: segments_core.Added,
+				ActionType: segments_domain.Added,
 				LogTime:    time.Now(),
 			}
 		}
@@ -241,7 +241,7 @@ func (repo *SegmentRepository) AddUsersToSegments(ctx context.Context, userIDs, 
 }
 
 func (repo *SegmentRepository) RemoveSegmentsForUser(ctx context.Context, userID string, slugsToRemove []string) error {
-	executor, err := getExecutor(ctx, repo.db)
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return err
 	}
@@ -251,12 +251,12 @@ func (repo *SegmentRepository) RemoveSegmentsForUser(ctx context.Context, userID
 		return err
 	}
 
-	historyEntries := make([]segments_core.UserSegmentHistoryEntry, len(slugsToRemove))
+	historyEntries := make([]segments_domain.UserSegmentHistoryEntry, len(slugsToRemove))
 	for i, slug := range slugsToRemove {
-		historyEntries[i] = segments_core.UserSegmentHistoryEntry{
+		historyEntries[i] = segments_domain.UserSegmentHistoryEntry{
 			UserID:     userID,
 			Slug:       slug,
-			ActionType: segments_core.Removed,
+			ActionType: segments_domain.Removed,
 			LogTime:    time.Now(),
 		}
 	}

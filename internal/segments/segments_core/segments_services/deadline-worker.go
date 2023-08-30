@@ -1,25 +1,22 @@
-package segments_core
+package segments_services
 
 import (
 	"context"
 	"time"
 
 	"avito-internship-2023/internal/pkg/common"
+	"avito-internship-2023/internal/segments/segments_core/segments_domain"
+	"avito-internship-2023/internal/segments/segments_core/segments_ports"
 )
-
-type deadlineProvider interface {
-	GetAllBefore(ctx context.Context, maxTime time.Time) ([]DeadlineEntry, error)
-	Remove(ctx context.Context, toRemove []DeadlineEntry) error
-}
 
 type DeadlineWorker struct {
 	logger           common.Logger
 	providerCtx      context.Context
-	deadlineProvider deadlineProvider
-	segmentsProvider segmentsProvider
+	deadlineProvider segments_ports.DeadlineProvider
+	segmentsProvider segments_ports.SegmentsProvider
 }
 
-func NewDeadlineWorker(logger common.Logger, providerCtx context.Context, deadlineProvider deadlineProvider, segmentsProvider segmentsProvider) *DeadlineWorker {
+func NewDeadlineWorker(logger common.Logger, providerCtx context.Context, deadlineProvider segments_ports.DeadlineProvider, segmentsProvider segments_ports.SegmentsProvider) *DeadlineWorker {
 	return &DeadlineWorker{logger: logger, providerCtx: providerCtx, deadlineProvider: deadlineProvider, segmentsProvider: segmentsProvider}
 }
 
@@ -68,7 +65,7 @@ func (worker *DeadlineWorker) RemoveExceededUserSegments() error {
 	return nil
 }
 
-func deadlinesToUserIDMap(deadlines []DeadlineEntry) map[string][]string {
+func deadlinesToUserIDMap(deadlines []segments_domain.DeadlineEntry) map[string][]string {
 	outMap := make(map[string][]string)
 	for _, deadlineEntry := range deadlines {
 		slugs, ok := outMap[deadlineEntry.UserID]

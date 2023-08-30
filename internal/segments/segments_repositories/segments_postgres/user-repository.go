@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"avito-internship-2023/internal/pkg/common"
-	"avito-internship-2023/internal/segments/segments_core"
+	"avito-internship-2023/internal/pkg/postgres"
+	"avito-internship-2023/internal/segments/segments_core/segments_domain"
 )
 
 var (
@@ -31,11 +32,11 @@ func (repo *UserRepository) BeginTransaction(ctx context.Context) (context.Conte
 		return nil, err
 	}
 
-	return setTx(ctx, tx), nil
+	return postgres.SetTx(ctx, tx), nil
 }
 
 func (repo *UserRepository) Rollback(ctx context.Context) error {
-	tx, err := getTx(ctx)
+	tx, err := postgres.GetTx(ctx)
 	if err != nil {
 		return err
 	}
@@ -47,7 +48,7 @@ func (repo *UserRepository) Rollback(ctx context.Context) error {
 }
 
 func (repo *UserRepository) Commit(ctx context.Context) error {
-	tx, err := getTx(ctx)
+	tx, err := postgres.GetTx(ctx)
 	if err != nil {
 		return err
 	}
@@ -58,8 +59,8 @@ func (repo *UserRepository) Commit(ctx context.Context) error {
 	return nil
 }
 
-func (repo *UserRepository) Create(ctx context.Context, user segments_core.User) error {
-	executor, err := getExecutor(ctx, repo.db)
+func (repo *UserRepository) Create(ctx context.Context, user segments_domain.User) error {
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return err
 	}
@@ -72,8 +73,8 @@ func (repo *UserRepository) Create(ctx context.Context, user segments_core.User)
 	return nil
 }
 
-func (repo *UserRepository) GetAll(ctx context.Context) ([]segments_core.User, error) {
-	executor, err := getExecutor(ctx, repo.db)
+func (repo *UserRepository) GetAll(ctx context.Context) ([]segments_domain.User, error) {
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return nil, err
 	}
@@ -83,9 +84,9 @@ func (repo *UserRepository) GetAll(ctx context.Context) ([]segments_core.User, e
 		return nil, err
 	}
 
-	users := make([]segments_core.User, 0)
+	users := make([]segments_domain.User, 0)
 	for rows.Next() {
-		var user segments_core.User
+		var user segments_domain.User
 		err = rows.Scan(&user.Id, &user.Status)
 		if err != nil {
 			return nil, err
@@ -101,34 +102,34 @@ func (repo *UserRepository) GetAll(ctx context.Context) ([]segments_core.User, e
 	return users, nil
 }
 
-func (repo *UserRepository) GetRandom(ctx context.Context) (segments_core.User, error) {
-	executor, err := getExecutor(ctx, repo.db)
+func (repo *UserRepository) GetRandom(ctx context.Context) (segments_domain.User, error) {
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
-		return segments_core.User{}, err
+		return segments_domain.User{}, err
 	}
 
 	var usersCount int
 	err = executor.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&usersCount)
 	if err != nil {
-		return segments_core.User{}, err
+		return segments_domain.User{}, err
 	}
 
 	if usersCount < 1 {
-		return segments_core.User{}, ErrNoUsersToPick
+		return segments_domain.User{}, ErrNoUsersToPick
 	}
 
 	offset := rand.Intn(usersCount)
-	var user segments_core.User
+	var user segments_domain.User
 	err = executor.QueryRowContext(ctx, `SELECT id, status FROM users OFFSET $1 LIMIT 1`, offset).Scan(&user.Id, &user.Status)
 	if err != nil {
-		return segments_core.User{}, err
+		return segments_domain.User{}, err
 	}
 
 	return user, nil
 }
 
 func (repo *UserRepository) Exists(ctx context.Context, userID string) (bool, error) {
-	executor, err := getExecutor(ctx, repo.db)
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return false, err
 	}
@@ -145,7 +146,7 @@ func (repo *UserRepository) Exists(ctx context.Context, userID string) (bool, er
 }
 
 func (repo *UserRepository) Remove(ctx context.Context, userID string) error {
-	executor, err := getExecutor(ctx, repo.db)
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return err
 	}
@@ -168,8 +169,8 @@ func (repo *UserRepository) Remove(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (repo *UserRepository) prepareHistoryEntriesForUserRemove(ctx context.Context, userID string) ([]segments_core.UserSegmentHistoryEntry, error) {
-	executor, err := getExecutor(ctx, repo.db)
+func (repo *UserRepository) prepareHistoryEntriesForUserRemove(ctx context.Context, userID string) ([]segments_domain.UserSegmentHistoryEntry, error) {
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return nil, err
 	}
@@ -194,12 +195,12 @@ func (repo *UserRepository) prepareHistoryEntriesForUserRemove(ctx context.Conte
 		return nil, err
 	}
 
-	historyEntries := make([]segments_core.UserSegmentHistoryEntry, len(userSegments))
+	historyEntries := make([]segments_domain.UserSegmentHistoryEntry, len(userSegments))
 	for i, slug := range userSegments {
-		historyEntries[i] = segments_core.UserSegmentHistoryEntry{
+		historyEntries[i] = segments_domain.UserSegmentHistoryEntry{
 			UserID:     userID,
 			Slug:       slug,
-			ActionType: segments_core.Removed,
+			ActionType: segments_domain.Removed,
 			LogTime:    time.Now(),
 		}
 	}
@@ -207,8 +208,8 @@ func (repo *UserRepository) prepareHistoryEntriesForUserRemove(ctx context.Conte
 	return historyEntries, nil
 }
 
-func (repo *UserRepository) Update(ctx context.Context, user segments_core.User) error {
-	executor, err := getExecutor(ctx, repo.db)
+func (repo *UserRepository) Update(ctx context.Context, user segments_domain.User) error {
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return err
 	}

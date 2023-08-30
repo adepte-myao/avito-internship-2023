@@ -5,23 +5,19 @@ import (
 	"encoding/json"
 
 	"avito-internship-2023/internal/pkg/common"
-	"avito-internship-2023/internal/segments/segments_core"
+	"avito-internship-2023/internal/segments/segments_core/segments_ports"
 
 	"github.com/segmentio/kafka-go"
 )
-
-type userActionProcessor interface {
-	ProcessUserAction(dto segments_core.UserActionDTO)
-}
 
 type UserActionConsumer struct {
 	logger    common.Logger
 	ctx       context.Context
 	reader    *kafka.Reader
-	processor userActionProcessor
+	processor segments_ports.SegmentsService
 }
 
-func NewUserActionConsumer(logger common.Logger, ctx context.Context, reader *kafka.Reader, processor userActionProcessor) *UserActionConsumer {
+func NewUserActionConsumer(logger common.Logger, ctx context.Context, reader *kafka.Reader, processor segments_ports.SegmentsService) *UserActionConsumer {
 	return &UserActionConsumer{logger: logger, ctx: ctx, reader: reader, processor: processor}
 }
 
@@ -36,7 +32,7 @@ func (consumer *UserActionConsumer) StartConsuming() error {
 			continue
 		}
 
-		var dto segments_core.UserActionDTO
+		var dto userActionDTO
 		if err = json.Unmarshal(msg.Value, &dto); err != nil {
 			// No sensitive data is sent, so message output can include some useful info
 			consumer.logger.Errorw(err.Error(),
@@ -47,7 +43,7 @@ func (consumer *UserActionConsumer) StartConsuming() error {
 			continue
 		}
 
-		consumer.processor.ProcessUserAction(dto)
+		consumer.processor.ProcessUserAction(dto.UserID)
 
 		if err = consumer.reader.CommitMessages(consumer.ctx, msg); err != nil {
 			consumer.logger.Error(err)

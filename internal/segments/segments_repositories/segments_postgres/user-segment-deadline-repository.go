@@ -8,7 +8,7 @@ import (
 
 	"avito-internship-2023/internal/pkg/common"
 	"avito-internship-2023/internal/pkg/postgres"
-	"avito-internship-2023/internal/segments/segments_core"
+	"avito-internship-2023/internal/segments/segments_core/segments_domain"
 
 	"github.com/lib/pq"
 )
@@ -23,12 +23,12 @@ func NewUserSegmentDeadlineRepository(logger common.Logger, db *sql.DB, userSegm
 	return &UserSegmentDeadlineRepository{logger: logger, db: db, userSegmentHistoryRepo: userSegmentHistoryRepo}
 }
 
-func (repo *UserSegmentDeadlineRepository) AddDeadlines(ctx context.Context, deadlines []segments_core.DeadlineEntry) error {
+func (repo *UserSegmentDeadlineRepository) AddDeadlines(ctx context.Context, deadlines []segments_domain.DeadlineEntry) error {
 	if len(deadlines) == 0 {
 		return nil
 	}
 
-	executor, err := getExecutor(ctx, repo.db)
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return err
 	}
@@ -51,8 +51,8 @@ func (repo *UserSegmentDeadlineRepository) AddDeadlines(ctx context.Context, dea
 	return nil
 }
 
-func (repo *UserSegmentDeadlineRepository) GetAllBefore(ctx context.Context, maxTime time.Time) ([]segments_core.DeadlineEntry, error) {
-	executor, err := getExecutor(ctx, repo.db)
+func (repo *UserSegmentDeadlineRepository) GetAllBefore(ctx context.Context, maxTime time.Time) ([]segments_domain.DeadlineEntry, error) {
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return nil, err
 	}
@@ -63,9 +63,9 @@ func (repo *UserSegmentDeadlineRepository) GetAllBefore(ctx context.Context, max
 		return nil, err
 	}
 
-	deadlineEntries := make([]segments_core.DeadlineEntry, 0)
+	deadlineEntries := make([]segments_domain.DeadlineEntry, 0)
 	for rows.Next() {
-		var entry segments_core.DeadlineEntry
+		var entry segments_domain.DeadlineEntry
 		err = rows.Scan(&entry.UserID, &entry.Slug, &entry.Deadline)
 		if err != nil {
 			return nil, err
@@ -81,8 +81,8 @@ func (repo *UserSegmentDeadlineRepository) GetAllBefore(ctx context.Context, max
 	return deadlineEntries, nil
 }
 
-func (repo *UserSegmentDeadlineRepository) Remove(ctx context.Context, toRemove []segments_core.DeadlineEntry) error {
-	executor, err := getExecutor(ctx, repo.db)
+func (repo *UserSegmentDeadlineRepository) Remove(ctx context.Context, toRemove []segments_domain.DeadlineEntry) error {
+	executor, err := postgres.GetExecutor(ctx, repo.db)
 	if err != nil {
 		return err
 	}

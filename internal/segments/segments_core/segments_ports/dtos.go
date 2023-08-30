@@ -1,13 +1,9 @@
-package segments_core
+package segments_ports
 
 import (
-	"errors"
 	"time"
-)
 
-var (
-	ErrUserNotFound      = errors.New("user not found")
-	ErrInvalidUserStatus = errors.New("invalid user status")
+	"avito-internship-2023/internal/segments/segments_core/segments_domain"
 )
 
 type CreateSegmentDTO struct {
@@ -39,20 +35,6 @@ type GetSegmentsForUserDTO struct {
 	UserID string `form:"userID" validate:"required"`
 }
 
-type HistoryActionType string
-
-var (
-	Added   HistoryActionType = "added"
-	Removed HistoryActionType = "removed"
-)
-
-type UserSegmentHistoryEntry struct {
-	UserID     string
-	Slug       string
-	ActionType HistoryActionType
-	LogTime    time.Time
-}
-
 type GetSegmentsForUserOutDTO struct {
 	Segments []string `json:"segments"`
 }
@@ -72,44 +54,6 @@ type RemoveUserDTO struct {
 }
 
 type UpdateUserDTO struct {
-	UserID string     `json:"userID" validate:"required"`
-	Status UserStatus `json:"status"`
-}
-
-type UserActionDTO struct {
-	UserID string `json:"userID" validate:"required"`
-}
-
-type UserStatus string
-
-const (
-	Active   UserStatus = "active"
-	Excluded UserStatus = "excluded"
-)
-
-var possibleStatuses = []UserStatus{Active, Excluded}
-
-func validateUserStatus(status UserStatus) error {
-	for _, possibleStatus := range possibleStatuses {
-		if status == possibleStatus {
-			return nil
-		}
-	}
-
-	return ErrInvalidUserStatus
-}
-
-type User struct {
-	Id     string
-	Status UserStatus
-}
-
-type Segment struct {
-	Slug string
-}
-
-type DeadlineEntry struct {
-	UserID   string
-	Slug     string
-	Deadline time.Time
+	UserID string                     `json:"userID" validate:"required"`
+	Status segments_domain.UserStatus `json:"status"`
 }

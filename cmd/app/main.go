@@ -17,7 +17,7 @@ import (
 	"avito-internship-2023/internal/pkg/server"
 	"avito-internship-2023/internal/pkg/zap_wrapper"
 	"avito-internship-2023/internal/segments/segments_consumers/user_kafka_consumers"
-	"avito-internship-2023/internal/segments/segments_core"
+	"avito-internship-2023/internal/segments/segments_core/segments_services"
 	"avito-internship-2023/internal/segments/segments_handlers/segment_handlers"
 	"avito-internship-2023/internal/segments/segments_handlers/user_handlers"
 	"avito-internship-2023/internal/segments/segments_integrations/segments_dropbox"
@@ -65,7 +65,7 @@ func main() {
 	}
 	defer cancelDB(postgresDB)
 
-	segmentsLogger := logger.With("domain", "segments")
+	segmentsLogger := logger.With("segments_domain", "segments")
 
 	historyRepo := segments_postgres.NewUserSegmentHistoryRepository(
 		segmentsLogger.With("caller_type", "UserSegmentHistoryRepository"), postgresDB)
@@ -112,7 +112,7 @@ func main() {
 		deadlineCheckPeriod = 30
 	}
 
-	deadlineWorker := segments_core.NewDeadlineWorker(segmentsLogger.With("caller_type", "DeadlineWorker"), deadlineWorkerCtx, deadlineRepo, segmentRepo)
+	deadlineWorker := segments_services.NewDeadlineWorker(segmentsLogger.With("caller_type", "DeadlineWorker"), deadlineWorkerCtx, deadlineRepo, segmentRepo)
 	go func() {
 		err := deadlineWorker.Start(deadlineCheckPeriod)
 		errorChannel <- err
@@ -127,7 +127,7 @@ func main() {
 	serviceCtx, cancelServiceCtx := context.WithCancel(appContext)
 	defer cancelServiceCtx()
 
-	service := segments_core.NewService(
+	service := segments_services.NewService(
 		segmentsLogger.With("caller_type", "Service"), serviceCtx, userService, userRepo,
 		segmentRepo, historyRepo, deadlineRepo, dropboxService)
 
@@ -139,30 +139,18 @@ func main() {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	segmentsRouter := router.Group("/segments")
+	segmentsHandler := segment_handlers.NewSegmentHandler(service, validate)
+	userHandler := user_handlers.NewUserHandler(service, validate)
 
-	changeForUserHandler := segment_handlers.NewChangeForUserHandler(service, validate)
-	segmentsRouter.POST("/change-for-user", changeForUserHandler.Handle)
+	segmentsRouter.POST("/change-for-user", segmentsHandler.ChangeForUser)
+	segmentsRouter.POST("/create", segmentsHandler.Create)
+	segmentsRouter.GET("/get-for-user", segmentsHandler.GetForUser)
+	segmentsRouter.GET("/get-history-report-link", segmentsHandler.GetHistoryReportLink)
+	segmentsRouter.DELETE("/remove", segmentsHandler.Remove)
 
-	createHandler := segment_handlers.NewCreateHandler(service, validate)
-	segmentsRouter.POST("/create", createHandler.Handle)
-
-	getForUserHandler := segment_handlers.NewGetForUserHandler(service, validate)
-	segmentsRouter.GET("/get-for-user", getForUserHandler.Handle)
-
-	getHistoryLinkHandler := segment_handlers.NewGetHistoryReportLinkHandler(service, validate)
-	segmentsRouter.GET("/get-history-report-link", getHistoryLinkHandler.Handle)
-
-	removeHandler := segment_handlers.NewRemoveHandler(service, validate)
-	segmentsRouter.DELETE("/remove", removeHandler.Handle)
-
-	createUserHandler := user_handlers.NewCreateHandler(service, validate)
-	segmentsRouter.POST("/create-user", createUserHandler.Handle)
-
-	removeUserHandler := user_handlers.NewRemoveHandler(service, validate)
-	segmentsRouter.DELETE("/remove-user", removeUserHandler.Handle)
-
-	updateUserHandler := user_handlers.NewUpdateHandler(service, validate)
-	segmentsRouter.PUT("/update-user", updateUserHandler.Handle)
+	segmentsRouter.POST("/create-user", userHandler.Create)
+	segmentsRouter.DELETE("/remove-user", userHandler.Remove)
+	segmentsRouter.PUT("/update-user", userHandler.Update)
 
 	userActionConsumerCtx, cancelUserActionConsumerCtx := context.WithCancel(appContext)
 	defer cancelUserActionConsumerCtx()

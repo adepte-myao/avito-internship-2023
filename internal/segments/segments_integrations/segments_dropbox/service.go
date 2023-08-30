@@ -33,7 +33,7 @@ func NewService(ctx context.Context, logger common.Logger, token string) *Servic
 	return &Service{ctx: ctx, logger: logger, token: token}
 }
 
-func (service *Service) SaveFileWithURLAccess(content io.Reader) (string, error) {
+func (service *Service) SaveCSVReportWithURLAccess(content io.Reader) (string, error) {
 	randString := uuid.New().String()[:4]
 	path := "/report_" + time.Now().Format("2006-01-02T15:04:05") + "_" + randString + ".csv"
 

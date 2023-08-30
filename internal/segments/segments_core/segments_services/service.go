@@ -1,4 +1,4 @@
-package segments_core
+package segments_services
 
 import (
 	"bytes"
@@ -6,12 +6,13 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"io"
 	"math/rand"
 	"strings"
 	"time"
 
 	"avito-internship-2023/internal/pkg/common"
+	"avito-internship-2023/internal/segments/segments_core/segments_domain"
+	"avito-internship-2023/internal/segments/segments_core/segments_ports"
 )
 
 var (
@@ -21,61 +22,20 @@ var (
 	ErrTooMuchParameters = errors.New("too much parameters")
 )
 
-type userServiceProvider interface {
-	GetStatus(userID string) (UserStatus, error)
-}
-
-type transactionHelper interface {
-	BeginTransaction(ctx context.Context) (context.Context, error)
-	Rollback(ctx context.Context) error
-	Commit(ctx context.Context) error
-}
-
-type userLocalProvider interface {
-	transactionHelper
-	Create(ctx context.Context, user User) error
-	GetAll(ctx context.Context) ([]User, error)
-	Exists(ctx context.Context, userID string) (bool, error)
-	Remove(ctx context.Context, userID string) error
-	Update(ctx context.Context, user User) error
-}
-
-type segmentsProvider interface {
-	transactionHelper
-	GetAllAsMap(ctx context.Context) (map[string]Segment, error)
-	GetForUser(ctx context.Context, userID string) ([]string, error)
-	Create(ctx context.Context, segment Segment) error
-	Remove(ctx context.Context, slug string) error
-	AddUsersToSegments(ctx context.Context, userIDs, slugs []string) error
-	RemoveSegmentsForUser(ctx context.Context, userID string, slugsToRemove []string) error
-}
-
-type userSegmentHistoryProvider interface {
-	GetAllForUser(ctx context.Context, userID string, month, year int) ([]UserSegmentHistoryEntry, error)
-}
-
-type deadlineAdder interface {
-	AddDeadlines(ctx context.Context, deadlines []DeadlineEntry) error
-}
-
-type fileStorage interface {
-	SaveFileWithURLAccess(context io.Reader) (string, error)
-}
-
 type Service struct {
 	logger              common.Logger
 	providerContext     context.Context
-	userServiceProvider userServiceProvider
-	userLocalProvider   userLocalProvider
-	segmentsProvider    segmentsProvider
-	historyProvider     userSegmentHistoryProvider
-	deadlineAdder       deadlineAdder
-	fileStorage         fileStorage
+	userServiceProvider segments_ports.UserServiceProvider
+	userLocalProvider   segments_ports.UserProvider
+	segmentsProvider    segments_ports.SegmentsProvider
+	historyProvider     segments_ports.UserSegmentHistoryProvider
+	deadlineAdder       segments_ports.DeadlineWorker
+	fileStorage         segments_ports.FileStorage
 }
 
-func NewService(logger common.Logger, providerContext context.Context, userServiceProvider userServiceProvider,
-	userLocalProvider userLocalProvider, segmentsProvider segmentsProvider, historyProvider userSegmentHistoryProvider,
-	deadlineAdder deadlineAdder, fileStorage fileStorage) *Service {
+func NewService(logger common.Logger, providerContext context.Context, userServiceProvider segments_ports.UserServiceProvider,
+	userLocalProvider segments_ports.UserProvider, segmentsProvider segments_ports.SegmentsProvider, historyProvider segments_ports.UserSegmentHistoryProvider,
+	deadlineAdder segments_ports.DeadlineWorker, fileStorage segments_ports.FileStorage) *Service {
 	return &Service{
 		logger:              logger,
 		providerContext:     providerContext,
@@ -88,7 +48,7 @@ func NewService(logger common.Logger, providerContext context.Context, userServi
 	}
 }
 
-func (service *Service) ChangeSegmentsForUser(dto ChangeSegmentsForUserDTO) error {
+func (service *Service) ChangeSegmentsForUser(dto segments_ports.ChangeSegmentsForUserDTO) error {
 	txCtx, err := service.segmentsProvider.BeginTransaction(service.providerContext)
 	if err != nil {
 		service.logger.Error(err)
@@ -149,7 +109,7 @@ func (service *Service) validateUser(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (service *Service) validateSegmentEntries(ctx context.Context, toAdd []AddSegmentEntry, toRemove []RemoveSegmentEntry) error {
+func (service *Service) validateSegmentEntries(ctx context.Context, toAdd []segments_ports.AddSegmentEntry, toRemove []segments_ports.RemoveSegmentEntry) error {
 	allSlugs := make([]string, 0, len(toAdd)+len(toRemove))
 	for _, segmentInfo := range toAdd {
 		allSlugs = append(allSlugs, segmentInfo.SegmentSlug)
@@ -194,8 +154,8 @@ func (service *Service) validateSegmentsExist(ctx context.Context, slugs []strin
 	return nil
 }
 
-func (service *Service) addDeadlines(userID string, segmentsToAdd []AddSegmentEntry) error {
-	deadlines := make([]DeadlineEntry, 0)
+func (service *Service) addDeadlines(userID string, segmentsToAdd []segments_ports.AddSegmentEntry) error {
+	deadlines := make([]segments_domain.DeadlineEntry, 0)
 	for _, segmentInfo := range segmentsToAdd {
 		if segmentInfo.SecondsToBeInSegment == 0 && segmentInfo.DeadlineForStayingInSegment.IsZero() {
 			continue
@@ -208,7 +168,7 @@ func (service *Service) addDeadlines(userID string, segmentsToAdd []AddSegmentEn
 			deadlineTime = segmentInfo.DeadlineForStayingInSegment
 		}
 
-		deadlines = append(deadlines, DeadlineEntry{
+		deadlines = append(deadlines, segments_domain.DeadlineEntry{
 			UserID:   userID,
 			Slug:     segmentInfo.SegmentSlug,
 			Deadline: deadlineTime,
@@ -223,16 +183,16 @@ func (service *Service) addDeadlines(userID string, segmentsToAdd []AddSegmentEn
 	return nil
 }
 
-func (service *Service) GetSegmentsForUser(dto GetSegmentsForUserDTO) (GetSegmentsForUserOutDTO, error) {
+func (service *Service) GetSegmentsForUser(dto segments_ports.GetSegmentsForUserDTO) (segments_ports.GetSegmentsForUserOutDTO, error) {
 	slugs, err := service.segmentsProvider.GetForUser(service.providerContext, dto.UserID)
 	if err != nil {
-		return GetSegmentsForUserOutDTO{}, err
+		return segments_ports.GetSegmentsForUserOutDTO{}, err
 	}
 
-	return GetSegmentsForUserOutDTO{Segments: slugs}, nil
+	return segments_ports.GetSegmentsForUserOutDTO{Segments: slugs}, nil
 }
 
-func (service *Service) GetHistoryReportLink(dto GetSegmentsHistoryReportLinkDTO) (string, error) {
+func (service *Service) GetHistoryReportLink(dto segments_ports.GetSegmentsHistoryReportLinkDTO) (string, error) {
 	entries, err := service.historyProvider.GetAllForUser(service.providerContext, dto.UserID, dto.Month, dto.Year)
 	if err != nil {
 		return "", err
@@ -250,7 +210,7 @@ func (service *Service) GetHistoryReportLink(dto GetSegmentsHistoryReportLinkDTO
 		return "", err
 	}
 
-	url, err := service.fileStorage.SaveFileWithURLAccess(reportContent)
+	url, err := service.fileStorage.SaveCSVReportWithURLAccess(reportContent)
 	if err != nil {
 		return "", err
 	}
@@ -258,7 +218,7 @@ func (service *Service) GetHistoryReportLink(dto GetSegmentsHistoryReportLinkDTO
 	return url, nil
 }
 
-func (service *Service) CreateSegment(dto CreateSegmentDTO) error {
+func (service *Service) CreateSegment(dto segments_ports.CreateSegmentDTO) error {
 	txCtx, err := service.segmentsProvider.BeginTransaction(service.providerContext)
 	if err != nil {
 		service.logger.Error(err)
@@ -290,13 +250,13 @@ func (service *Service) CreateSegment(dto CreateSegmentDTO) error {
 	return nil
 }
 
-func (service *Service) createSegment(ctx context.Context, dto CreateSegmentDTO) error {
+func (service *Service) createSegment(ctx context.Context, dto segments_ports.CreateSegmentDTO) error {
 	err := service.validateSegmentsNotExist(ctx, []string{dto.Slug})
 	if err != nil {
 		return err
 	}
 
-	err = service.segmentsProvider.Create(ctx, Segment{Slug: dto.Slug})
+	err = service.segmentsProvider.Create(ctx, segments_domain.Segment{Slug: dto.Slug})
 	if err != nil {
 		service.logger.Error(err)
 		return err
@@ -326,7 +286,7 @@ func (service *Service) validateSegmentsNotExist(ctx context.Context, slugs []st
 	return nil
 }
 
-func (service *Service) fillSegment(ctx context.Context, segmentInfo CreateSegmentDTO) error {
+func (service *Service) fillSegment(ctx context.Context, segmentInfo segments_ports.CreateSegmentDTO) error {
 	userIDsToAdd, err := service.getPercentOfUsers(ctx, segmentInfo.PercentToFill)
 
 	slugsToAdd := []string{segmentInfo.Slug}
@@ -348,7 +308,7 @@ func (service *Service) getPercentOfUsers(ctx context.Context, percent float64) 
 	userIDs := make([]string, 0)
 	partition := percent / 100
 	for _, user := range users {
-		if user.Status != Active {
+		if user.Status != segments_domain.Active {
 			continue
 		}
 
@@ -360,30 +320,30 @@ func (service *Service) getPercentOfUsers(ctx context.Context, percent float64) 
 	return userIDs, nil
 }
 
-func (service *Service) RemoveSegment(dto RemoveSegmentDTO) error {
+func (service *Service) RemoveSegment(dto segments_ports.RemoveSegmentDTO) error {
 	return service.segmentsProvider.Remove(service.providerContext, dto.Slug)
 }
 
-func (service *Service) CreateUser(dto CreateUserDTO) error {
-	return service.userLocalProvider.Create(service.providerContext, User{Id: dto.UserID, Status: Active})
+func (service *Service) CreateUser(dto segments_ports.CreateUserDTO) error {
+	return service.userLocalProvider.Create(service.providerContext, segments_domain.User{Id: dto.UserID, Status: segments_domain.Active})
 }
 
-func (service *Service) UpdateUser(dto UpdateUserDTO) error {
-	if err := validateUserStatus(dto.Status); err != nil {
+func (service *Service) UpdateUser(dto segments_ports.UpdateUserDTO) error {
+	if err := segments_domain.ValidateUserStatus(dto.Status); err != nil {
 		return err
 	}
 
-	return service.userLocalProvider.Update(service.providerContext, User{Id: dto.UserID, Status: dto.Status})
+	return service.userLocalProvider.Update(service.providerContext, segments_domain.User{Id: dto.UserID, Status: dto.Status})
 }
 
-func (service *Service) RemoveUser(dto RemoveUserDTO) error {
+func (service *Service) RemoveUser(dto segments_ports.RemoveUserDTO) error {
 	return service.userLocalProvider.Remove(service.providerContext, dto.UserID)
 }
 
-func (service *Service) ProcessUserAction(dto UserActionDTO) {
-	userStatus, err := service.userServiceProvider.GetStatus(dto.UserID)
-	if errors.Is(err, ErrUserNotFound) {
-		err = service.userLocalProvider.Remove(context.TODO(), dto.UserID)
+func (service *Service) ProcessUserAction(userID string) {
+	userStatus, err := service.userServiceProvider.GetStatus(userID)
+	if errors.Is(err, segments_domain.ErrUserNotFound) {
+		err = service.userLocalProvider.Remove(context.TODO(), userID)
 		if err != nil {
 			service.logger.Error(err)
 		}
@@ -406,13 +366,13 @@ func (service *Service) ProcessUserAction(dto UserActionDTO) {
 		}
 	}()
 
-	exists, err := service.userLocalProvider.Exists(transactionCtx, dto.UserID)
+	exists, err := service.userLocalProvider.Exists(transactionCtx, userID)
 	if err != nil {
 		service.logger.Error(err)
 		return
 	}
 
-	targetUser := User{Id: dto.UserID, Status: userStatus}
+	targetUser := segments_domain.User{Id: userID, Status: userStatus}
 	if exists {
 		err = service.userLocalProvider.Update(transactionCtx, targetUser)
 	} else {
