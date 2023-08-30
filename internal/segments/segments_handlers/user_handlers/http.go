@@ -25,7 +25,7 @@ func NewUserHandler(service segments_ports.SegmentsService, validate *validator.
 // @Tags user
 // @Description Saves information about user in local storage
 // @Accept json
-// @Param input body segments.CreateUserDTO true "userID to save"
+// @Param input body segments_ports.CreateUserDTO true "userID to save"
 // @Success 204
 // @Router /segments/create-user [post]
 func (handler *UserHandler) Create(c *gin.Context) {
@@ -53,7 +53,7 @@ func (handler *UserHandler) Create(c *gin.Context) {
 // @Tags user
 // @Description Removes user from local storage and excludes him from all segments he has
 // @Accept json
-// @Param input body segments.RemoveUserDTO true "userID to remove"
+// @Param input body segments_ports.RemoveUserDTO true "userID to remove"
 // @Success 204
 // @Router /segments/remove-user [delete]
 func (handler *UserHandler) Remove(c *gin.Context) {
@@ -81,7 +81,7 @@ func (handler *UserHandler) Remove(c *gin.Context) {
 // @Tags user
 // @Description Updates user info
 // @Accept json
-// @Param input body segments.UpdateUserDTO true "userID and his status to update "
+// @Param input body segments_ports.UpdateUserDTO true "userID and his status to update "
 // @Success 204
 // @Router /segments/update-user [put]
 func (handler *UserHandler) Update(c *gin.Context) {

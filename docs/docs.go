@@ -31,7 +31,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/segments.ChangeSegmentsForUserDTO"
+                            "$ref": "#/definitions/segments_ports.ChangeSegmentsForUserDTO"
                         }
                     }
                 ],
@@ -58,7 +58,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/segments.CreateSegmentDTO"
+                            "$ref": "#/definitions/segments_ports.CreateSegmentDTO"
                         }
                     }
                 ],
@@ -85,7 +85,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/segments.CreateUserDTO"
+                            "$ref": "#/definitions/segments_ports.CreateUserDTO"
                         }
                     }
                 ],
@@ -118,7 +118,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/segments.GetSegmentsForUserOutDTO"
+                            "$ref": "#/definitions/segments_ports.GetSegmentsForUserOutDTO"
                         }
                     }
                 }
@@ -182,7 +182,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/segments.RemoveSegmentDTO"
+                            "$ref": "#/definitions/segments_ports.RemoveSegmentDTO"
                         }
                     }
                 ],
@@ -209,7 +209,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/segments.RemoveUserDTO"
+                            "$ref": "#/definitions/segments_ports.RemoveUserDTO"
                         }
                     }
                 ],
@@ -236,7 +236,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/segments.UpdateUserDTO"
+                            "$ref": "#/definitions/segments_ports.UpdateUserDTO"
                         }
                     }
                 ],
@@ -260,7 +260,18 @@ const docTemplate = `{
                 }
             }
         },
-        "segments.AddSegmentEntry": {
+        "segments_domain.UserStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "excluded"
+            ],
+            "x-enum-varnames": [
+                "Active",
+                "Excluded"
+            ]
+        },
+        "segments_ports.AddSegmentEntry": {
             "type": "object",
             "required": [
                 "segmentSlug"
@@ -278,7 +289,7 @@ const docTemplate = `{
                 }
             }
         },
-        "segments.ChangeSegmentsForUserDTO": {
+        "segments_ports.ChangeSegmentsForUserDTO": {
             "type": "object",
             "required": [
                 "userID"
@@ -287,13 +298,13 @@ const docTemplate = `{
                 "segmentsToAdd": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/segments.AddSegmentEntry"
+                        "$ref": "#/definitions/segments_ports.AddSegmentEntry"
                     }
                 },
                 "segmentsToRemove": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/segments.RemoveSegmentEntry"
+                        "$ref": "#/definitions/segments_ports.RemoveSegmentEntry"
                     }
                 },
                 "userID": {
@@ -301,7 +312,7 @@ const docTemplate = `{
                 }
             }
         },
-        "segments.CreateSegmentDTO": {
+        "segments_ports.CreateSegmentDTO": {
             "type": "object",
             "required": [
                 "slug"
@@ -317,7 +328,7 @@ const docTemplate = `{
                 }
             }
         },
-        "segments.CreateUserDTO": {
+        "segments_ports.CreateUserDTO": {
             "type": "object",
             "required": [
                 "userID"
@@ -328,7 +339,7 @@ const docTemplate = `{
                 }
             }
         },
-        "segments.GetSegmentsForUserOutDTO": {
+        "segments_ports.GetSegmentsForUserOutDTO": {
             "type": "object",
             "properties": {
                 "segments": {
@@ -339,7 +350,7 @@ const docTemplate = `{
                 }
             }
         },
-        "segments.RemoveSegmentDTO": {
+        "segments_ports.RemoveSegmentDTO": {
             "type": "object",
             "required": [
                 "slug"
@@ -350,7 +361,7 @@ const docTemplate = `{
                 }
             }
         },
-        "segments.RemoveSegmentEntry": {
+        "segments_ports.RemoveSegmentEntry": {
             "type": "object",
             "required": [
                 "segmentSlug"
@@ -361,7 +372,7 @@ const docTemplate = `{
                 }
             }
         },
-        "segments.RemoveUserDTO": {
+        "segments_ports.RemoveUserDTO": {
             "type": "object",
             "required": [
                 "userID"
@@ -372,30 +383,19 @@ const docTemplate = `{
                 }
             }
         },
-        "segments.UpdateUserDTO": {
+        "segments_ports.UpdateUserDTO": {
             "type": "object",
             "required": [
                 "userID"
             ],
             "properties": {
                 "status": {
-                    "$ref": "#/definitions/segments.UserStatus"
+                    "$ref": "#/definitions/segments_domain.UserStatus"
                 },
                 "userID": {
                     "type": "string"
                 }
             }
-        },
-        "segments.UserStatus": {
-            "type": "string",
-            "enum": [
-                "active",
-                "excluded"
-            ],
-            "x-enum-varnames": [
-                "Active",
-                "Excluded"
-            ]
         }
     }
 }`

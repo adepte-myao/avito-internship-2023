@@ -26,7 +26,7 @@ func NewSegmentHandler(service segments_ports.SegmentsService, validate *validat
 // @Tags segment
 // @Description Validates given segment changes and applies them
 // @Accept json
-// @Param input body segments.ChangeSegmentsForUserDTO true "userID, which segments to change, and segments lists to add/remove"
+// @Param input body segments_ports.ChangeSegmentsForUserDTO true "userID, which segments to change, and segments lists to add/remove"
 // @Success 204
 // @Router /segments/change-for-user [post]
 func (handler *SegmentHandler) ChangeForUser(c *gin.Context) {
@@ -54,7 +54,7 @@ func (handler *SegmentHandler) ChangeForUser(c *gin.Context) {
 // @Tags segment
 // @Description Validates given segment creates it
 // @Accept json
-// @Param input body segments.CreateSegmentDTO true "slug and probability for each user to be added to segment"
+// @Param input body segments_ports.CreateSegmentDTO true "slug and probability for each user to be added to segment"
 // @Success 204
 // @Router /segments/create [post]
 func (handler *SegmentHandler) Create(c *gin.Context) {
@@ -83,7 +83,7 @@ func (handler *SegmentHandler) Create(c *gin.Context) {
 // @Description Returns the list of segments for given user
 // @Produce json
 // @Param userID query string true "identifier of user which segments to provide"
-// @Success 200 {object} segments.GetSegmentsForUserOutDTO
+// @Success 200 {object} segments_ports.GetSegmentsForUserOutDTO
 // @Router /segments/get-for-user [get]
 func (handler *SegmentHandler) GetForUser(c *gin.Context) {
 	var dto segments_ports.GetSegmentsForUserDTO
@@ -147,7 +147,7 @@ func (handler *SegmentHandler) GetHistoryReportLink(c *gin.Context) {
 // @Tags segment
 // @Description Removes given segment and excludes all users from it
 // @Accept json
-// @Param input body segments.RemoveSegmentDTO true "slug of segment to remove"
+// @Param input body segments_ports.RemoveSegmentDTO true "slug of segment to remove"
 // @Success 204
 // @Router /segments/remove [delete]
 func (handler *SegmentHandler) Remove(c *gin.Context) {

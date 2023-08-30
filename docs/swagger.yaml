@@ -6,7 +6,15 @@ definitions:
       reportLink:
         type: string
     type: object
-  segments.AddSegmentEntry:
+  segments_domain.UserStatus:
+    enum:
+    - active
+    - excluded
+    type: string
+    x-enum-varnames:
+    - Active
+    - Excluded
+  segments_ports.AddSegmentEntry:
     properties:
       deadlineForStayingInSegment:
         type: string
@@ -18,22 +26,22 @@ definitions:
     required:
     - segmentSlug
     type: object
-  segments.ChangeSegmentsForUserDTO:
+  segments_ports.ChangeSegmentsForUserDTO:
     properties:
       segmentsToAdd:
         items:
-          $ref: '#/definitions/segments.AddSegmentEntry'
+          $ref: '#/definitions/segments_ports.AddSegmentEntry'
         type: array
       segmentsToRemove:
         items:
-          $ref: '#/definitions/segments.RemoveSegmentEntry'
+          $ref: '#/definitions/segments_ports.RemoveSegmentEntry'
         type: array
       userID:
         type: string
     required:
     - userID
     type: object
-  segments.CreateSegmentDTO:
+  segments_ports.CreateSegmentDTO:
     properties:
       percentToFill:
         maximum: 100
@@ -44,58 +52,50 @@ definitions:
     required:
     - slug
     type: object
-  segments.CreateUserDTO:
+  segments_ports.CreateUserDTO:
     properties:
       userID:
         type: string
     required:
     - userID
     type: object
-  segments.GetSegmentsForUserOutDTO:
+  segments_ports.GetSegmentsForUserOutDTO:
     properties:
       segments:
         items:
           type: string
         type: array
     type: object
-  segments.RemoveSegmentDTO:
+  segments_ports.RemoveSegmentDTO:
     properties:
       slug:
         type: string
     required:
     - slug
     type: object
-  segments.RemoveSegmentEntry:
+  segments_ports.RemoveSegmentEntry:
     properties:
       segmentSlug:
         type: string
     required:
     - segmentSlug
     type: object
-  segments.RemoveUserDTO:
+  segments_ports.RemoveUserDTO:
     properties:
       userID:
         type: string
     required:
     - userID
     type: object
-  segments.UpdateUserDTO:
+  segments_ports.UpdateUserDTO:
     properties:
       status:
-        $ref: '#/definitions/segments.UserStatus'
+        $ref: '#/definitions/segments_domain.UserStatus'
       userID:
         type: string
     required:
     - userID
     type: object
-  segments.UserStatus:
-    enum:
-    - active
-    - excluded
-    type: string
-    x-enum-varnames:
-    - Active
-    - Excluded
 info:
   contact: {}
   title: 'Avito Internship Service: User Segments'
@@ -112,7 +112,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/segments.ChangeSegmentsForUserDTO'
+          $ref: '#/definitions/segments_ports.ChangeSegmentsForUserDTO'
       responses:
         "204":
           description: No Content
@@ -129,7 +129,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/segments.CreateSegmentDTO'
+          $ref: '#/definitions/segments_ports.CreateSegmentDTO'
       responses:
         "204":
           description: No Content
@@ -146,7 +146,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/segments.CreateUserDTO'
+          $ref: '#/definitions/segments_ports.CreateUserDTO'
       responses:
         "204":
           description: No Content
@@ -167,7 +167,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/segments.GetSegmentsForUserOutDTO'
+            $ref: '#/definitions/segments_ports.GetSegmentsForUserOutDTO'
       tags:
       - segment
   /segments/get-history-report-link:
@@ -211,7 +211,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/segments.RemoveSegmentDTO'
+          $ref: '#/definitions/segments_ports.RemoveSegmentDTO'
       responses:
         "204":
           description: No Content
@@ -229,7 +229,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/segments.RemoveUserDTO'
+          $ref: '#/definitions/segments_ports.RemoveUserDTO'
       responses:
         "204":
           description: No Content
@@ -246,7 +246,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/segments.UpdateUserDTO'
+          $ref: '#/definitions/segments_ports.UpdateUserDTO'
       responses:
         "204":
           description: No Content
