@@ -3,6 +3,7 @@ package user_kafka_consumers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"avito-internship-2023/internal/pkg/common"
@@ -32,7 +33,9 @@ func (consumer *UserActionConsumer) StartConsuming() error {
 		msg, err := consumer.reader.FetchMessage(fetchCtx)
 		if err != nil {
 			cancelFetch()
-			consumer.logger.Error(err)
+			if !errors.Is(err, context.DeadlineExceeded) {
+				consumer.logger.Error(err)
+			}
 			continue
 		}
 
