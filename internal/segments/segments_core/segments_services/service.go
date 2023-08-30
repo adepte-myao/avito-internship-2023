@@ -209,7 +209,7 @@ func (service *Service) GetHistoryReportLink(dto segments_ports.GetSegmentsHisto
 
 	toWrite := make([][]string, len(entries))
 	for i, entry := range entries {
-		toWrite[i] = []string{entry.Slug, entry.UserID, string(entry.ActionType), entry.LogTime.String()}
+		toWrite[i] = []string{entry.UserID, entry.Slug, string(entry.ActionType), entry.LogTime.String()}
 	}
 
 	reportContent := &bytes.Buffer{}
