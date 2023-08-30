@@ -9,6 +9,11 @@ import (
 	"net/http"
 
 	"avito-internship-2023/internal/pkg/common"
+	"avito-internship-2023/internal/pkg/postgres"
+	"avito-internship-2023/internal/segments/segments_core/segments_domain"
+	"avito-internship-2023/internal/segments/segments_core/segments_services"
+	"avito-internship-2023/internal/segments/segments_integrations/segments_dropbox"
+	"avito-internship-2023/internal/segments/segments_repositories/segments_postgres"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,11 +21,12 @@ import (
 type ErrorType string
 
 const (
-	databaseError     ErrorType = "database_error"
-	validationError             = "validation_error"
-	notFound                    = "not_found"
-	parseError                  = "parse_error"
-	unclassifiedError           = "unclassified_error"
+	databaseError         ErrorType = "database_error"
+	validationError       ErrorType = "validation_error"
+	notFound              ErrorType = "not_found"
+	parseError            ErrorType = "parse_error"
+	externalResourceError ErrorType = "external_resource_error"
+	unclassifiedError     ErrorType = "unclassified_error"
 )
 
 type internalError struct {
@@ -40,12 +46,23 @@ func New(logger common.Logger) gin.HandlerFunc {
 	errorsMap[sql.ErrNoRows] = notFound
 	errorsMap[sql.ErrTxDone] = databaseError
 	errorsMap[sql.ErrConnDone] = databaseError
+	errorsMap[postgres.ErrInvalidContext] = unclassifiedError
+	errorsMap[postgres.ErrInvalidValueType] = unclassifiedError
+	errorsMap[segments_domain.ErrUserNotFound] = validationError
+	errorsMap[segments_domain.ErrInvalidUserStatus] = validationError
+	errorsMap[segments_services.ErrSegmentNotExist] = validationError
+	errorsMap[segments_services.ErrSlugAlreadyInUse] = validationError
+	errorsMap[segments_services.ErrUserDoesNotExist] = validationError
+	errorsMap[segments_services.ErrTooMuchParameters] = validationError
+	errorsMap[segments_dropbox.ErrUnexpectedBehaviour] = externalResourceError
+	errorsMap[segments_postgres.ErrNoUsersToPick] = unclassifiedError
 
 	codeMap := make(map[ErrorType]int)
 	codeMap[parseError] = http.StatusBadRequest
 	codeMap[validationError] = http.StatusBadRequest
 	codeMap[notFound] = http.StatusBadRequest
 	codeMap[databaseError] = http.StatusInternalServerError
+	codeMap[externalResourceError] = http.StatusInternalServerError
 	codeMap[unclassifiedError] = http.StatusInternalServerError
 
 	return func(c *gin.Context) {

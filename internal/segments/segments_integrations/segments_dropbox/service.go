@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -81,7 +82,7 @@ func (service *Service) saveFileWithPath(content io.Reader, path string) error {
 		body, err := io.ReadAll(resp.Body)
 		service.logger.Error(ErrUnexpectedBehaviour, " status: ", resp.StatusCode, " body: ", string(body), " error: ", err)
 
-		return ErrUnexpectedBehaviour
+		return fmt.Errorf("%w; %s", ErrUnexpectedBehaviour, "upload request to dropbox failed")
 	}
 
 	return nil
@@ -117,7 +118,7 @@ func (service *Service) getTempLink(path string) (string, error) {
 		body, err := io.ReadAll(resp.Body)
 		service.logger.Error(ErrUnexpectedBehaviour, " status: ", resp.StatusCode, " body: ", string(body), " error: ", err)
 
-		return "", ErrUnexpectedBehaviour
+		return "", fmt.Errorf("%w; %s", ErrUnexpectedBehaviour, "get-link request to dropbox failed")
 	}
 
 	type getLinkResponse struct {
