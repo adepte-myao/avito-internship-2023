@@ -143,23 +143,78 @@ USER_SERVICE_MOCK_MAX_PRODUCE_PERIOD_IN_SECONDS – максимальный п�
 
 Начиная с 1 сентября я буду 2 раза в день обновлять токен. По МСК времени это будет примерно в 4:00 и в 16:00.
 
+Ссылки, возвращаемые методом /segments/get-history-report-link, действительны в течение 4 часов.
+
 ### Использование Kafka
 В проекте для передачи событий используется Kafka. Для управления используется KRaft, настройки брокера стандартные, 
 mTLS взаимодействия нет.
 
 ## Примеры запросов / ответов
+После каждого запроса будут приложены скрины, подтверждающие корректность выполнения запроса. Все запросы были выполнены в порядке 
+их отображения.
 
 ### Работа с сегментами
 #### /segments/create
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/9d78e31b-8beb-4923-9993-354f1a19d98d)
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/1f60a2ae-b494-4dd8-8a00-b04b0469847f)
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/b61e73b8-c7e3-4285-bb1b-dbf39e34cb03)
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/cbcb47b0-b26e-48e7-ad0f-acef329c5845)
+
 #### /segments/remove
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/6b96fdc6-e9f8-4b3c-854c-efbbe7fefe6d)
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/f1e20501-05d2-404e-948e-a6d4f3234653)
+
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/300819ff-6c20-43a1-86f9-2b9ad41bc282)
+
 #### /segments/change-for-user
+Сегмент и пользователь существуют, добавление сегмента:
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/0c41c040-446f-4eeb-8028-ba84c6b7d5c7)
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/0263386a-abfe-4c4f-9af4-22ba5dd53635)
+
+Сегмента и / или пользователя не существует:
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/1ffd8f26-9764-4fe8-bbac-596bce26d005)
+
+Удаление существующего сегмента у пользователя:
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/fc214e95-1d48-40b1-9af4-f5bc21554904)
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/211aab07-6a55-4702-b1e2-7db48aa1de78)
+
+Добавление сегмента на 5 минут:
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/32241019-b930-44f7-b10c-4a222c630bda)
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/2428f5e8-3a53-4bdb-a1fb-f0906970ed6e)
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/34391fdf-4728-4fec-8986-f63cdb2e4d41)
+
+Спустя 5 минут:
+
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/9af2ba62-76ed-47d1-95ec-a27dab3a7fee)
+
 #### /segments/get-for-user
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/6468008d-9bbc-4c6f-9b3f-b896cf9d9006)
+
 #### /segments/get-history-report-link
+Успешное выполнение запроса:
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/4e2385c6-1c89-4da0-89a7-0a901c9e476b)
+
+При переходе по ссылке скачивается файл со следующим содержимым:
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/eddb9d2c-9013-4fe9-aa9f-06229e53e858)
+
+Ошибка, возникающая при истечении access токена:
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/6ca1a342-b834-45ad-a8f3-51f157cf97b1)
 
 ### Работа с пользователями
 #### /segments/create-user
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/92f3a5ab-e14d-4737-b889-de62e38f0411)
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/ced783bb-9056-41ab-8d0b-393c5c4e891d)
+
 #### /segments/update-user
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/8dc54a94-2f3d-4d05-8644-385d6c4b7b69)
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/989a6b7a-7043-4e7b-b9d6-4e6179d69267)
+
 #### /segments/remove-user
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/50611831-bbf9-4f44-bea3-9bbcd957facc)
+![image](https://github.com/adepte-myao/avito-internship-2023/assets/106271382/cb11b3ad-1312-45f0-a7bf-c93c34328e48)
+
+При удалении пользователя он будет исключен из всех его сегментов, что отразится на истории. 
+Получить историю пользователя можно в том числе после его удаления.
 
 ## Контакт
 [Telegram](https://t.me/adepte_myao)
