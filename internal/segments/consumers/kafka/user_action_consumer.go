@@ -63,5 +63,9 @@ func (consumer *UserActionConsumer) StartConsuming() error {
 		}
 
 		cancelCommit()
+
+		if consumer.ctx.Err() != nil {
+			return consumer.ctx.Err()
+		}
 	}
 }
